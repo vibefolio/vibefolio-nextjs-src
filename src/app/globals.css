@@ -1,3 +1,15 @@
+/* src/app/globals.css */
+
+/* 🚨 오류를 일으키는 @import 문을 삭제합니다. */
+/* @import "tw-animate-css"; */
+
+/* tw-animate-css 대신 설치된 tailwindcss-animate를 사용합니다. */
+/* tailwindcss-animate는 플러그인 형태로 동작하며, CSS 임포트가 필요 없습니다. */
+
+@custom-variant dark (&:is(.dark *));
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ... (나머지 CSS 코드) ... */
