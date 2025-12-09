@@ -2,53 +2,81 @@
 
 "use client";
 
-import React, { forwardRef } from "react"; // 🚨 forwardRef 임포트
-import { Heart } from "lucide-react";
+import React, { forwardRef } from "react";
+import { Heart, Eye } from "lucide-react";
 import { addCommas } from "@/lib/format/comma";
 
 // Props 인터페이스 정의
 interface ImageCardProps {
   props: {
     id: string;
-    urls: { regular: string };
+    urls: { regular: string; full: string };
     user: {
       username: string;
-      profile_image: { large: string };
+      profile_image: { large: string; small: string };
     };
     likes: number;
+    views?: number;
+    description?: string | null;
+    alt_description?: string | null;
+    created_at?: string;
+    width?: number;
+    height?: number;
   } | null;
+  onClick?: () => void;
 }
 
-// 🚨🚨🚨 forwardRef를 사용하여 컴포넌트를 래핑하고 ref와 나머지 props를 받습니다. 🚨🚨🚨
+// forwardRef를 사용하여 컴포넌트를 래핑하고 ref와 나머지 props를 받습니다.
 export const ImageCard = forwardRef<HTMLDivElement, ImageCardProps>(
-  ({ props, ...rest }, ref) => {
+  ({ props, onClick, ...rest }, ref) => {
     if (!props) return null;
 
     return (
-      // 🚨 ref와 DialogTrigger에서 전달된 나머지 props(onClick 등)를 최상위 div에 전달합니다.
       <div
-        className="w-full flex flex-col gap-2 cursor-pointer"
+        className="masonry-item behance-card cursor-pointer group"
         ref={ref}
-        {...rest} // DialogTrigger에서 전달되는 onClick, onKeyDown 등을 받음
+        onClick={onClick}
+        {...rest}
       >
-        <img
-          src={props.urls.regular}
-          alt="@THUMBNAIL"
-          className="w-full aspect-square rounded-sm object-cover"
-        />
-        <div className="w-full flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img
-              src={props.user.profile_image.large}
-              alt="@PROFILE_IMAGE"
-              className="w-7 h-7 rounded-full"
-            />
-            <p className="text-sm">{props.user.username}</p>
+        {/* 이미지 영역 */}
+        <div className="relative overflow-hidden image-hover">
+          <img
+            src={props.urls.regular}
+            alt="@THUMBNAIL"
+            className="w-full h-auto object-cover"
+          />
+          
+          {/* 호버 시 나타나는 정보 */}
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
+            <div className="flex items-center gap-6 text-white">
+              <div className="flex items-center gap-2">
+                <Heart size={20} fill="white" />
+                <span className="font-medium">{addCommas(props.likes)}</span>
+              </div>
+              {props.views && (
+                <div className="flex items-center gap-2">
+                  <Eye size={20} />
+                  <span className="font-medium">{addCommas(props.views)}</span>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1">
-              <Heart size={16} className="text-red-400" fill="#f87171" />
-              <p className="text-sm">{addCommas(props.likes)}</p>
+        </div>
+
+        {/* 카드 정보 */}
+        <div className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <img
+                src={props.user.profile_image.large}
+                alt="@PROFILE_IMAGE"
+                className="w-8 h-8 rounded-full avatar"
+              />
+              <p className="text-sm font-medium text-primary">{props.user.username}</p>
+            </div>
+            <div className="flex items-center gap-1 text-secondary">
+              <Heart size={14} className="text-gray-400" />
+              <span className="text-xs">{addCommas(props.likes)}</span>
             </div>
           </div>
         </div>
@@ -57,4 +85,4 @@ export const ImageCard = forwardRef<HTMLDivElement, ImageCardProps>(
   }
 );
 
-// * index.ts에서 export * from "./ImageCard"를 사용하므로 추가 export는 필요 없습니다.
+ImageCard.displayName = "ImageCard";

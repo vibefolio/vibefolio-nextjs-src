@@ -2,6 +2,7 @@
 
 import type { Metadata } from "next";
 // 🚨 Header 컴포넌트를 임포트합니다. 경로가 정확한지 확인해주세요.
+import { TopHeader } from "@/components/TopHeader";
 import { Header } from "@/components/Header";
 // 🚨 Footer 컴포넌트를 임포트합니다. (Footer 파일명 확인)
 import { Footer } from "@/components/Footer";
@@ -33,16 +34,21 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white min-h-screen`}
       >
         <TooltipProvider>
-          {/* 🚨 Header 컴포넌트를 body 태그 안에 추가합니다. */}
+          {/* TopHeader - 최상단 광고 배너 */}
+          <TopHeader />
+          
+          {/* Header 컴포넌트 */}
           <Header />
 
-          {/* 🚨 메인 콘텐츠 영역 (page.tsx가 여기에 들어갑니다) */}
-          <div className="pt-14 md:pt-16 min-h-screen">{children}</div>
+          {/* 메인 콘텐츠 영역 - TopHeader와 Header 높이만큼 padding */}
+          <div className="min-h-screen fade-in">
+            {children}
+          </div>
 
-          {/* 🚨 Footer 컴포넌트를 body의 마지막에 추가합니다. */}
+          {/* Footer 컴포넌트 */}
           <Footer />
         </TooltipProvider>
       </body>

@@ -38,29 +38,8 @@ const FOOTER_CONTETNS = [
 const menu = [
   { label: "발견", newest: false, dropdown: false, underline: true, path: "/" },
   {
-    label: "채용",
+    label: "연결",
     newest: true,
-    dropdown: false,
-    underline: false,
-    path: "/recruit",
-  },
-  {
-    label: "워크숍/커뮤니티",
-    newest: false,
-    dropdown: true,
-    underline: false,
-    path: "#",
-  }, // path 임시 수정
-  {
-    label: "포폴 피드백",
-    newest: true,
-    dropdown: false,
-    underline: false,
-    path: "/submission",
-  }, // path 임시 수정
-  {
-    label: "에이전시",
-    newest: false,
     dropdown: false,
     underline: false,
     path: "/recruit",
@@ -95,7 +74,7 @@ export function Header({
   return (
     <>
       {/* 모바일 헤더 */}
-      <header className="sticky top-0 z-10 w-full flex flex-col items-center justify-between pt-3 px-4 border-b bg-white xl:hidden">
+      <header className="sticky top-[44px] z-40 w-full flex flex-col items-center justify-between py-4 px-4 border-b simple-header bg-white xl:hidden">
         <div className="w-full h-full flex items-center justify-between">
           <div className="w-full flex items-center gap-4">
             <Sheet>
@@ -179,8 +158,8 @@ export function Header({
             </Sheet>
             {/* 로고 */}
             {/* 🚨 Link로 감싸서 홈으로 이동하도록 수정 */}
-            <Link href="/">
-              <img src={ASSETS_PATH} alt="@LOGO" className="w-30" />
+            <Link href="/" className="flex items-center">
+              <img src={ASSETS_PATH} alt="@LOGO" className="h-10" />
             </Link>
           </div>
           <div className="flex items-center gap-4">
@@ -209,7 +188,7 @@ export function Header({
             </Drawer>
           </div>
         </div>
-        <nav className="w-full h-14 flex items-center gap-4">
+        <nav className="w-full h-16 flex items-center gap-6">
           {menu.map((item, index) => (
             <Link
               href={item.path}
@@ -217,7 +196,7 @@ export function Header({
               className={`h-full flex items-center gap-1 font-medium ${item.underline && "h-[calc(100%-2px)] border-b-2 border-black"
                 }`}
             >
-              <p className={`text-[15px] ${item.underline && "mt-0.5"}`}>
+              <p className={`text-base font-medium ${item.underline && "mt-0.5"}`}>
                 {item.label}
               </p>
               {item.dropdown && <ChevronDown size={16} />}
@@ -230,13 +209,13 @@ export function Header({
       </header>
 
       {/* 데스크탑 헤더 */}
-      <header className="sticky top-0 z-10 w-full h-14 hidden xl:flex items-center justify-between px-8 border-b bg-white">
+      <header className="sticky top-[44px] z-40 w-full h-20 hidden xl:flex items-center justify-between px-8 border-b simple-header bg-white">
         <div className="h-full flex items-center gap-10">
           {/* 로고 */}
-          <Link href="/">
-            <img src={ASSETS_PATH} alt="@LOGO" className="w-30" />
+          <Link href="/" className="flex items-center">
+            <img src={ASSETS_PATH} alt="@LOGO" className="h-14" />
           </Link>
-          <nav className="h-full flex items-center gap-4">
+          <nav className="h-full flex items-center gap-8">
             {menu.map((item, index) => (
               <Link // 🚨 NavLink -> Link로 변경
                 href={item.path}
@@ -244,7 +223,7 @@ export function Header({
                 className={`h-full flex items-center gap-1 font-medium ${item.underline && "h-[calc(100%-2px)] border-b-2 border-black"
                   }`}
               >
-                <p className={`text-[15px] ${item.underline && "mt-0.5"}`}>
+                <p className={`text-base font-medium ${item.underline && "mt-0.5"}`}>
                   {item.label}
                 </p>
                 {item.dropdown && <ChevronDown size={16} />}

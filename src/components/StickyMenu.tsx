@@ -123,27 +123,7 @@ export function StickyMenu({ props, onSetCategory }: StickyMenuProps) {
           );
         })}
 
-        {/* 3. 우측 고정 영역 (그라데이션 및 특별 콘텐츠) */}
-        <div className="absolute right-0 top-0 h-full flex items-center gap-2 bg-white pl-8">
-          {/* 그라데이션 오버레이 */}
-          {/* 🚨 bg-linear-to-l 클래스가 정의되어 있지 않다면 Tailwind CSS 설정이 필요합니다. */}
-          <div className="h-full bg-gradient-to-l from-white to-white/0 w-20 absolute left-0"></div>
 
-          <div className="flex items-center gap-5 z-20 pr-4 shrink-0">
-            {/* 구분선 */}
-            <Separator orientation="vertical" className="h-10" />
-
-            <div className="flex flex-col items-center gap-0 p-4">
-              {/* 이미지 경로 수정 필요: public 폴더를 기준으로 변경해야 합니다. */}
-              <img
-                src="/img-gyeonngi-do.png"
-                alt="경기도 AI 콘텐츠"
-                className="w-10"
-              />
-              <p className="text-sm whitespace-nowrap">경기도 AI 콘텐츠</p>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
   );

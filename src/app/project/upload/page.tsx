@@ -1,0 +1,243 @@
+// src/app/project/upload/page.tsx
+
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Upload, X, Image as ImageIcon } from "lucide-react";
+
+export default function ProjectUploadPage() {
+  const router = useRouter();
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    category: "korea",
+    imageUrl: "",
+  });
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
+
+  // 프로필 정보 불러오기 및 로그인 체크
+  useEffect(() => {
+    const savedProfile = localStorage.getItem("userProfile");
+    if (savedProfile) {
+      const profile = JSON.parse(savedProfile);
+      // 프로필에 username이 있는지 확인
+      if (profile.username) {
+        setUserProfile(profile);
+      } else {
+        // 프로필은 있지만 username이 없으면 로그인 필요
+        alert("프로젝트를 등록하려면 먼저 프로필을 설정해주세요.");
+        router.push("/mypage/profile");
+      }
+    } else {
+      // 프로필이 없으면 회원가입/로그인 필요
+      alert("프로젝트를 등록하려면 먼저 로그인해주세요.");
+      router.push("/login");
+    }
+  }, [router]);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setPreviewImage(result);
+        setFormData({ ...formData, imageUrl: result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      // Supabase 또는 로컬 스토리지에 저장
+      const newProject = {
+        id: Date.now().toString(),
+        ...formData,
+        urls: {
+          regular: formData.imageUrl,
+          full: formData.imageUrl,
+        },
+        user: {
+          username: userProfile?.username || "익명 사용자",
+          profile_image: {
+            large: userProfile?.profileImage || "/globe.svg",
+            small: userProfile?.profileImage || "/globe.svg",
+          },
+        },
+        likes: 0,
+        views: Math.floor(Math.random() * 1000), // 임시 조회수
+        alt_description: formData.description,
+        created_at: new Date().toISOString(),
+        width: 1000,
+        height: 1000,
+        tags: ["AI", "디자인", "포트폴리오"], // 임시 태그
+      };
+
+      // 로컬 스토리지에 저장 (임시)
+      const existingProjects = JSON.parse(
+        localStorage.getItem("projects") || "[]"
+      );
+      localStorage.setItem(
+        "projects",
+        JSON.stringify([...existingProjects, newProject])
+      );
+
+      alert("프로젝트가 성공적으로 등록되었습니다!");
+      router.push("/");
+    } catch (error) {
+      console.error("프로젝트 등록 실패:", error);
+      alert("프로젝트 등록에 실패했습니다.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="w-full min-h-screen bg-gray-50 py-8 md:py-12 px-4">
+      <div className="max-w-3xl mx-auto">
+        <div className="bg-white rounded-lg border border-gray-200 p-6 md:p-10 fade-in shadow-subtle">
+          <h1 className="text-2xl md:text-3xl font-bold text-primary mb-2">
+            프로젝트 등록
+          </h1>
+          <p className="text-sm md:text-base text-secondary mb-8">
+            당신의 창작물을 세상과 공유하세요
+          </p>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* 이미지 업로드 */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">프로젝트 이미지</label>
+              <div className="relative">
+                {previewImage ? (
+                  <div className="relative w-full aspect-square rounded-lg overflow-hidden glass-card">
+                    <img
+                      src={previewImage}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPreviewImage(null);
+                        setFormData({ ...formData, imageUrl: "" });
+                      }}
+                      className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-all"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full aspect-square border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-purple-500 transition-all glass-card">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <ImageIcon className="w-12 h-12 mb-4 text-gray-400" />
+                      <p className="mb-2 text-sm text-gray-500">
+                        <span className="font-semibold">클릭하여 업로드</span>{" "}
+                        또는 드래그 앤 드롭
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        PNG, JPG, GIF (최대 10MB)
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      required
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+
+            {/* 제목 */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">프로젝트 제목</label>
+              <Input
+                type="text"
+                placeholder="프로젝트 제목을 입력하세요"
+                value={formData.title}
+                onChange={(e) =>
+                  setFormData({ ...formData, title: e.target.value })
+                }
+                required
+                className="glass-card border-white/20"
+              />
+            </div>
+
+            {/* 설명 */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">프로젝트 설명</label>
+              <Textarea
+                placeholder="프로젝트에 대해 설명해주세요"
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                required
+                rows={5}
+                className="glass-card border-white/20 resize-none"
+              />
+            </div>
+
+            {/* 카테고리 */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">카테고리</label>
+              <select
+                value={formData.category}
+                onChange={(e) =>
+                  setFormData({ ...formData, category: e.target.value })
+                }
+                className="w-full px-3 py-2 glass-card border border-white/20 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="korea">전체</option>
+                <option value="ai">AI</option>
+                <option value="video">영상/모션그래픽</option>
+              </select>
+            </div>
+
+            {/* 버튼 */}
+            <div className="flex flex-col md:flex-row gap-4 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.push("/")}
+                className="flex-1 btn-secondary"
+                disabled={isSubmitting}
+              >
+                취소
+              </Button>
+              <Button
+                type="submit"
+                className="flex-1 btn-primary"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    등록 중...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Upload size={20} />
+                    프로젝트 등록
+                  </span>
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}

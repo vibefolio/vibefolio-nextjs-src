@@ -22,46 +22,43 @@ interface MainBannerProps {
   gallery: unknown[];
 }
 
-// 🚨 컴포넌트 이름 AppMainBanner -> MainBanner로 변경
 export function MainBanner({ loading, gallery }: MainBannerProps) {
   return (
     <section className="w-full">
       <Carousel
-      // ... (생략)
+        opts={{
+          align: "start",
+          loop: true,
+        }}
+        className="w-full"
       >
-        <CarouselContent className="w-full flex justify-start gap-6 -mx-100">
+        <CarouselContent className="w-full flex justify-start gap-4 -ml-4">
           {loading ? (
             <>
-              {/* 스켈레톤도 반응형으로 변경하는 것이 좋지만, 일단은 min-w를 유지 */}
-              <Skeleton className="min-w-[580px] w-[580px] h-80" />
-              {/* ... 나머지 Skeleton 생략 ... */}
+              <Skeleton className="min-w-[90vw] md:min-w-[600px] w-[90vw] md:w-[600px] h-[300px] md:h-[400px]" />
+              <Skeleton className="min-w-[90vw] md:min-w-[600px] w-[90vw] md:w-[600px] h-[300px] md:h-[400px]" />
+              <Skeleton className="min-w-[90vw] md:min-w-[600px] w-[90vw] md:w-[600px] h-[300px] md:h-[400px]" />
             </>
           ) : (
             gallery.map((_, index) => (
               <CarouselItem
                 key={index}
-                // 🚨 CarouselItem의 basis 클래스를 조정하여 반응형을 보장합니다.
-                // basis-full: 기본값으로 100% (모바일)
-                // sm:basis-1/2: 작은 화면에서 50%
-                // md:basis-1/3: 중간 화면에서 33%
-                // xl:basis-1/4: 큰 화면에서 25% (원본 JS의 의도에 맞게)
-                className="basis-full sm:basis-1/2 md:basis-1/3 xl:basis-1/4 pl-6"
+                className="basis-[90vw] md:basis-[600px] pl-4"
               >
-                <Card className="w-full h-80">
-                  {" "}
-                  {/* 🚨 w-[580px] min-w-[580px] 클래스 제거 */}
-                  <CardContent>
-                    <span className="text-3xl font-semibold">{index + 1}</span>
+                <Card className="w-full h-[300px] md:h-[400px] overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                  <CardContent className="flex items-center justify-center h-full bg-gradient-to-br from-gray-100 to-gray-200 relative">
+                    <span className="text-6xl md:text-8xl font-bold text-gray-400">{index + 1}</span>
+                    <div className="absolute bottom-4 right-4 bg-white/90 px-4 py-2 rounded-lg">
+                      <p className="text-sm text-gray-600">배너 {index + 1}</p>
+                    </div>
                   </CardContent>
                 </Card>
               </CarouselItem>
             ))
           )}
         </CarouselContent>
-        {/* CarouselPrevious와 CarouselNext의 mx-30은 Tailwind에서 정의되지 않은 클래스일 수 있습니다. */}
-        {/* 🚨 임시로 mx-auto (중앙 정렬)나 mx-4 (여백)로 변경하는 것을 고려해보세요. */}
-        <CarouselPrevious className="mx-30 rounded-full hidden md:flex" />
-        <CarouselNext className="mx-30 rounded-full" />
+        <CarouselPrevious className="left-4 rounded-full hidden md:flex" />
+        <CarouselNext className="right-4 rounded-full hidden md:flex" />
       </Carousel>
     </section>
   );

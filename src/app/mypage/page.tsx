@@ -1,110 +1,188 @@
+// src/app/mypage/page.tsx
+
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Heart, Bookmark, User, Upload, Settings, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { ImageDialog } from "@/components/ImageDialog";
-
-// 임시 데이터
-const DUMMY_PROJECTS = [
-    {
-        id: "p1",
-        urls: {
-            regular: "/window.svg",
-            full: "/window.svg",
-        },
-        user: {
-            username: "user_me",
-            profile_image: {
-                large: "/globe.svg",
-                small: "/globe.svg",
-            },
-        },
-        likes: 120,
-        description: "내 프로젝트 1",
-        alt_description: "설명",
-        created_at: "2023-01-01",
-        width: 800,
-        height: 600,
-    },
-    {
-        id: "p2",
-        urls: {
-            regular: "/file.svg",
-            full: "/file.svg",
-        },
-        user: {
-            username: "user_me",
-            profile_image: {
-                large: "/globe.svg",
-                small: "/globe.svg",
-            },
-        },
-        likes: 85,
-        description: "내 프로젝트 2",
-        alt_description: "설명",
-        created_at: "2023-01-05",
-        width: 800,
-        height: 600,
-    },
-];
+import { getTotalLikesCount } from "@/lib/likes";
+import { getTotalBookmarksCount } from "@/lib/bookmarks";
 
 export default function MyPage() {
-    return (
-        <div className="min-h-screen bg-gray-50 pb-20">
-            {/* 프로필 헤더 섹션 */}
-            <div className="bg-white border-b">
-                <div className="container mx-auto px-4 py-12">
-                    <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
-                        <Avatar className="w-32 h-32 border-4 border-white shadow-lg">
-                            <AvatarImage src="/globe.svg" alt="Profile" />
-                            <AvatarFallback>ME</AvatarFallback>
-                        </Avatar>
+  const router = useRouter();
+  const [totalLikes, setTotalLikes] = useState(0);
+  const [totalBookmarks, setTotalBookmarks] = useState(0);
+  const [totalProjects, setTotalProjects] = useState(0);
 
-                        <div className="flex-1 text-center md:text-left space-y-4">
-                            <div>
-                                <h1 className="text-2xl font-bold text-gray-900">내 프로필 (User Name)</h1>
-                                <p className="text-gray-500">UI/UX Designer & Developer</p>
-                            </div>
+  useEffect(() => {
+    // 통계 로드
+    const loadStats = () => {
+      const likes = getTotalLikesCount();
+      const bookmarks = getTotalBookmarksCount();
+      
+      // 내가 업로드한 프로젝트 수 (임시)
+      const projects = localStorage.getItem("projects");
+      const projectCount = projects ? JSON.parse(projects).length : 0;
+      
+      setTotalLikes(likes);
+      setTotalBookmarks(bookmarks);
+      setTotalProjects(projectCount);
+    };
 
-                            {/* 팔로워/팔로잉 정보 - TC007 요구사항 */}
-                            <div className="flex items-center justify-center md:justify-start gap-6 text-sm">
-                                <div className="flex flex-col items-center md:items-start cursor-pointer hover:underline">
-                                    <span className="font-bold text-lg text-gray-900">1,234</span>
-                                    <span className="text-gray-500">팔로워</span>
-                                </div>
-                                <div className="flex flex-col items-center md:items-start cursor-pointer hover:underline">
-                                    <span className="font-bold text-lg text-gray-900">567</span>
-                                    <span className="text-gray-500">팔로잉</span>
-                                </div>
-                                <div className="flex flex-col items-center md:items-start">
-                                    <span className="font-bold text-lg text-gray-900">12</span>
-                                    <span className="text-gray-500">프로젝트</span>
-                                </div>
-                            </div>
+    loadStats();
 
-                            <div className="pt-2">
-                                <Button variant="outline" className="mr-2">프로필 편집</Button>
-                                <Button>프로젝트 업로드</Button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    // 통계 업데이트
+    const interval = setInterval(loadStats, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const menuItems = [
+    {
+      icon: Heart,
+      title: "좋아요한 프로젝트",
+      description: `${totalLikes}개의 프로젝트`,
+      color: "text-red-500",
+      bgColor: "bg-red-50",
+      path: "/mypage/likes",
+    },
+    {
+      icon: Bookmark,
+      title: "북마크한 프로젝트",
+      description: `${totalBookmarks}개의 프로젝트`,
+      color: "text-blue-500",
+      bgColor: "bg-blue-50",
+      path: "/mypage/bookmarks",
+    },
+    {
+      icon: Upload,
+      title: "내 프로젝트",
+      description: `${totalProjects}개의 프로젝트`,
+      color: "text-green-500",
+      bgColor: "bg-green-50",
+      path: "/mypage/projects",
+    },
+    {
+      icon: User,
+      title: "프로필 설정",
+      description: "내 정보 및 프로필 관리",
+      color: "text-purple-500",
+      bgColor: "bg-purple-50",
+      path: "/mypage/profile",
+    },
+    {
+      icon: MessageCircle,
+      title: "1:1 문의 내역",
+      description: "보낸 문의 확인",
+      color: "text-orange-500",
+      bgColor: "bg-orange-50",
+      path: "/mypage/inquiries",
+    },
+    {
+      icon: Settings,
+      title: "설정",
+      description: "프로필 및 계정 설정",
+      color: "text-gray-500",
+      bgColor: "bg-gray-50",
+      path: "/mypage/settings",
+    },
+  ];
+
+  return (
+    <div className="w-full min-h-screen bg-gray-50">
+      {/* 헤더 */}
+      <div className="w-full bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+              <User size={40} className="text-white" />
             </div>
-
-            {/* 프로젝트 그리드 섹션 */}
-            <div className="container mx-auto px-4 py-8">
-                <div className="flex items-center gap-4 mb-6">
-                    <h2 className="text-xl font-bold border-b-2 border-black pb-1">내 작업물</h2>
-                    <h2 className="text-xl font-bold text-gray-400 pb-1 cursor-pointer hover:text-gray-600">좋아요한 작업</h2>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {DUMMY_PROJECTS.map((project) => (
-                        <ImageDialog key={project.id} props={project} />
-                    ))}
-                </div>
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold text-primary">
+                마이페이지
+              </h1>
+              <p className="text-secondary text-lg">
+                내 활동과 프로젝트를 관리하세요
+              </p>
             </div>
+          </div>
         </div>
-    );
+      </div>
+
+      {/* 통계 카드 */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-subtle">
+            <div className="flex items-center gap-3 mb-2">
+              <Heart className="text-red-500" size={24} />
+              <h3 className="text-lg font-bold text-primary">좋아요</h3>
+            </div>
+            <p className="text-3xl font-bold text-primary">{totalLikes}</p>
+            <p className="text-sm text-secondary">개의 프로젝트</p>
+          </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-subtle">
+            <div className="flex items-center gap-3 mb-2">
+              <Bookmark className="text-blue-500" size={24} />
+              <h3 className="text-lg font-bold text-primary">북마크</h3>
+            </div>
+            <p className="text-3xl font-bold text-primary">{totalBookmarks}</p>
+            <p className="text-sm text-secondary">개의 프로젝트</p>
+          </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-subtle">
+            <div className="flex items-center gap-3 mb-2">
+              <Upload className="text-green-500" size={24} />
+              <h3 className="text-lg font-bold text-primary">업로드</h3>
+            </div>
+            <p className="text-3xl font-bold text-primary">{totalProjects}</p>
+            <p className="text-sm text-secondary">개의 프로젝트</p>
+          </div>
+        </div>
+
+        {/* 메뉴 그리드 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {menuItems.map((item, index) => (
+            <button
+              key={index}
+              onClick={() => router.push(item.path)}
+              className="bg-white rounded-lg border border-gray-200 p-6 shadow-subtle hover:shadow-card transition-all duration-300 text-left group"
+            >
+              <div className="flex items-start gap-4">
+                <div className={`${item.bgColor} p-4 rounded-lg group-hover:scale-110 transition-transform duration-300`}>
+                  <item.icon className={item.color} size={32} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-primary mb-1 group-hover:text-purple-600 transition-colors">
+                    {item.title}
+                  </h3>
+                  <p className="text-secondary">{item.description}</p>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* 빠른 액션 */}
+        <div className="mt-8 bg-white rounded-lg border border-gray-200 p-6 shadow-subtle">
+          <h2 className="text-xl font-bold text-primary mb-4">빠른 액션</h2>
+          <div className="flex flex-wrap gap-4">
+            <Button
+              onClick={() => router.push("/project/upload")}
+              className="btn-primary"
+            >
+              <Upload size={20} className="mr-2" />
+              프로젝트 업로드
+            </Button>
+            <Button
+              onClick={() => router.push("/")}
+              className="btn-secondary"
+            >
+              프로젝트 둘러보기
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
