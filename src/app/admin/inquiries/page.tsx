@@ -40,7 +40,7 @@ export default function AdminInquiriesPage() {
   const handleToggleStatus = (id: number) => {
     const updated = inquiries.map((inq) =>
       inq.id === id
-        ? { ...inq, status: inq.status === "pending" ? "answered" : "pending" }
+        ? { ...inq, status: (inq.status === "pending" ? "answered" : "pending") as "pending" | "answered" }
         : inq
     );
     setInquiries(updated);
