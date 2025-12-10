@@ -121,21 +121,8 @@ export function Header({
                       크리에이티브를 발견하고 수집해보세요.
                     </p>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    {/* Link 컴포넌트로 변경 시 Button을 Link 안에 넣거나 asChild 사용 */}
-                    <Button
-                      asChild
-                      className="bg-[#4ACAD4] hover:bg-[#41a3aa]"
-                    >
-                      <Link href="/signup">
-                        <span>회원가입</span>
-                      </Link>
-                    </Button>
-                    <Button asChild variant={"outline"}>
-                      <Link href="/login">
-                        <span>로그인</span>
-                      </Link>
-                    </Button>
+                  <div className="flex flex-col gap-2 auth-buttons-mobile">
+                    <AuthButtons />
                   </div>
                 </div>
                 <Separator />

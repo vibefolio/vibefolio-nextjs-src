@@ -3,11 +3,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/client';
+import type { Database } from '@/lib/supabase/types';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest) {
+  console.log("회원가입 API 호출됨"); // [DEBUG]
   try {
     const body = await request.json();
+    console.log("요청 바디:", body); // [DEBUG]
     const { email, password, nickname } = body;
 
     if (!email || !password) {
@@ -35,15 +38,17 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 사용자 생성 (Service Role로 RLS 우회)
-    const { data, error } = await supabaseAdmin
+    const insertData: any = {
+      email,
+      password: hashedPassword,
+      nickname: nickname || email.split('@')[0],
+      is_active: true,
+      role: 'user',
+    };
+
+    const { data, error } = await (supabaseAdmin as any)
       .from('User')
-      .insert([
-        {
-          email,
-          password: hashedPassword,
-          nickname: nickname || email.split('@')[0],
-        },
-      ])
+      .insert([insertData])
       .select('user_id, email, nickname, profile_image_url, created_at, role')
       .single();
 

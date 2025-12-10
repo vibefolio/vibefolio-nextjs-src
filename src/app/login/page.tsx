@@ -1,5 +1,3 @@
-// src/app/login/page.tsx
-
 "use client";
 
 import { useState } from "react";
@@ -7,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,34 +22,43 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // API를 통한 로그인
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-        }),
+      // 1. Supabase Auth 로그인
+      console.log('로그인 시도:', formData.email);
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
       });
 
-      const data = await response.json();
+      if (authError) throw authError;
+      if (!authData.user) throw new Error("로그인 정보를 가져올 수 없습니다.");
 
-      if (!response.ok) {
-        throw new Error(data.error || '로그인에 실패했습니다.');
+      console.log("Supabase Auth 로그인 성공:", authData.user.id);
+
+      // 2. public.User 테이블에서 프로필 정보 조회
+      // 이메일로 매칭합니다.
+      const { data: userData, error: userError } = await (supabase as any)
+        .from('User')
+        .select('*')
+        .eq('email', formData.email)
+        .single();
+
+      if (userError) {
+        console.error("사용자 프로필 조회 실패:", userError);
+        // Auth는 성공했지만 프로필이 없는 경우, 예외 처리 혹은 임시 프로필 생성?
+        // 여기서는 에러로 처리.
+        throw new Error("사용자 정보를 찾을 수 없습니다.");
       }
 
-      // 로그인 성공 시 사용자 정보 저장
+      // 3. 로컬 스토리지 저장
       localStorage.setItem('userProfile', JSON.stringify({
-        user_id: data.user.user_id,
-        email: data.user.email,
-        nickname: data.user.nickname,
-        profile_image_url: data.user.profile_image_url,
-        role: data.user.role,
+        user_id: userData.user_id,
+        email: userData.email,
+        nickname: userData.nickname,
+        profile_image_url: userData.profile_image_url,
+        role: userData.role,
       }));
       localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('userId', data.user.user_id.toString());
+      localStorage.setItem('userId', userData.user_id.toString());
 
       alert('로그인 성공!');
       // 페이지 새로고침으로 헤더 상태 업데이트
@@ -58,6 +66,7 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error('로그인 오류:', error);
       setError(error.message || '로그인 중 오류가 발생했습니다.');
+      alert(`로그인 오류: ${error.message}`);
     } finally {
       setLoading(false);
     }

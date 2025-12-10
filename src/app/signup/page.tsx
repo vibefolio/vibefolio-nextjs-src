@@ -1,5 +1,3 @@
-// src/app/signup/page.tsx
-
 "use client";
 
 import { useState } from "react";
@@ -7,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase/client";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -21,62 +20,97 @@ export default function SignupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("회원가입 시도:", formData);
     setError("");
 
-    // 유효성 검사
     if (formData.password !== formData.passwordConfirm) {
       setError("비밀번호가 일치하지 않습니다.");
+      alert("비밀번호가 일치하지 않습니다.");
       return;
     }
 
     if (formData.password.length < 6) {
       setError("비밀번호는 최소 6자 이상이어야 합니다.");
+      alert("비밀번호는 최소 6자 이상이어야 합니다.");
       return;
     }
 
     if (!formData.username.trim()) {
       setError("사용자 이름을 입력해주세요.");
+      alert("사용자 이름을 입력해주세요.");
       return;
     }
 
     setLoading(true);
 
     try {
-      // API를 통한 회원가입
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      // 1. Supabase Auth 회원가입
+      console.log("Supabase Auth 회원가입 시도...");
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            nickname: formData.username,
+          },
         },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          nickname: formData.username,
-        }),
       });
 
-      const data = await response.json();
+      if (authError) throw authError;
+      if (!authData.user) throw new Error("회원가입에 실패했습니다. (No User Data)");
 
-      if (!response.ok) {
-        throw new Error(data.error || '회원가입에 실패했습니다.');
+      console.log("Supabase Auth 가입 성공:", authData.user);
+
+      // 2. public.User 테이블에 프로필 생성 (연동)
+      console.log("프로필 생성 시도...");
+      const { data: userData, error: userError } = await (supabase as any)
+        .from('User')
+        .insert([
+          {
+            email: formData.email,
+            // 비밀번호는 Supabase Auth가 관리하므로 여기엔 더미나 비워둘 수 있지만, 
+            // 기존 로직 호환성을 위해 해시된 값을 넣거나, 혹은 Auth 사용 시엔 무시하도록 수정이 필요함.
+            // 일단은 'managed_by_supabase_auth' 같은 값을 넣습니다.
+            password: 'managed_by_supabase_auth', 
+            nickname: formData.username,
+            is_active: true,
+            role: 'user',
+          },
+        ])
+        .select()
+        .single();
+
+      if (userError) {
+        console.error("프로필 생성 실패 (Auth는 성공함):", userError);
+        // 이미 Auth는 가입되었으므로, 여기서 에러를 내면 꼬일 수 있음.
+        // 하지만 프로필이 없으면 서비스 이용이 불가하므로 에러 처리.
+        // 추가: 중복 이메일 에러일 경우 처리
+        if (userError.code === '23505') { // unique_violation
+           throw new Error("이미 가입된 이메일입니다 (Public DB).");
+        }
+        throw userError;
       }
+      
+      console.log("프로필 생성 성공:", userData);
 
-      // 회원가입 성공 시 사용자 정보 저장
+      // 3. 로컬 스토리지 저장 및 로그인 처리
       localStorage.setItem('userProfile', JSON.stringify({
-        user_id: data.user.user_id,
-        email: data.user.email,
-        nickname: data.user.nickname,
-        profile_image_url: data.user.profile_image_url,
-        role: data.user.role,
+        user_id: userData.user_id,
+        email: userData.email,
+        nickname: userData.nickname,
+        profile_image_url: userData.profile_image_url,
+        role: userData.role,
       }));
       localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('userId', data.user.user_id.toString());
+      localStorage.setItem('userId', userData.user_id.toString());
 
       alert('회원가입이 완료되었습니다!');
       router.push('/');
+      
     } catch (error: any) {
       console.error('회원가입 오류:', error);
       setError(error.message || '회원가입 중 오류가 발생했습니다.');
+      alert(`회원가입 오류: ${error.message}`);
     } finally {
       setLoading(false);
     }
