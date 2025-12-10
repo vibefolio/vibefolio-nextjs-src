@@ -2,7 +2,7 @@
 // 로그인 API
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase/client';
+import { supabaseAdmin } from '@/lib/supabase/client';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest) {
@@ -17,8 +17,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 사용자 조회
-    const { data: user, error } = await supabase
+    // 사용자 조회 (Service Role로 RLS 우회)
+    const { data: user, error } = await supabaseAdmin
       .from('User')
       .select('*')
       .eq('email', email)

@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,39 +23,40 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Supabase 로그인
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
+      // API를 통한 로그인
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
       });
 
-      if (signInError) throw signInError;
+      const data = await response.json();
 
-      if (data.user) {
-        // 사용자 정보를 로컬 스토리지에 저장
-        const username = data.user.user_metadata?.username || data.user.email?.split("@")[0];
-        
-        const userProfile = {
-          username: username,
-          email: data.user.email,
-          profileImage: "/globe.svg",
-          bio: "",
-          location: "",
-          website: "",
-          skills: [],
-          socialLinks: {},
-        };
-        
-        localStorage.setItem("userProfile", JSON.stringify(userProfile));
-        localStorage.setItem("isLoggedIn", "true");
-        localStorage.setItem("userId", data.user.id);
-
-        alert("로그인 성공!");
-        router.push("/");
+      if (!response.ok) {
+        throw new Error(data.error || '로그인에 실패했습니다.');
       }
+
+      // 로그인 성공 시 사용자 정보 저장
+      localStorage.setItem('userProfile', JSON.stringify({
+        user_id: data.user.user_id,
+        email: data.user.email,
+        nickname: data.user.nickname,
+        profile_image_url: data.user.profile_image_url,
+        role: data.user.role,
+      }));
+      localStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('userId', data.user.user_id.toString());
+
+      alert('로그인 성공!');
+      router.push('/');
     } catch (error: any) {
-      console.error("로그인 오류:", error);
-      setError(error.message || "로그인 중 오류가 발생했습니다.");
+      console.error('로그인 오류:', error);
+      setError(error.message || '로그인 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }

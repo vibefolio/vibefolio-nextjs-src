@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -43,41 +42,41 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      // Supabase 회원가입
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            username: formData.username,
-          },
+      // API를 통한 회원가입
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          nickname: formData.username,
+        }),
       });
 
-      if (signUpError) throw signUpError;
+      const data = await response.json();
 
-      // 회원가입 성공 시 프로필 생성
-      if (data.user) {
-        // 로컬 스토리지에 프로필 저장 (임시)
-        const userProfile = {
-          username: formData.username,
-          email: formData.email,
-          profileImage: "/globe.svg",
-          bio: "",
-          location: "",
-          website: "",
-          skills: [],
-          socialLinks: {},
-        };
-        localStorage.setItem("userProfile", JSON.stringify(userProfile));
-        localStorage.setItem("isLoggedIn", "true");
-
-        alert("회원가입이 완료되었습니다! 이메일을 확인해주세요.");
-        router.push("/mypage/profile");
+      if (!response.ok) {
+        throw new Error(data.error || '회원가입에 실패했습니다.');
       }
+
+      // 회원가입 성공 시 사용자 정보 저장
+      localStorage.setItem('userProfile', JSON.stringify({
+        user_id: data.user.user_id,
+        email: data.user.email,
+        nickname: data.user.nickname,
+        profile_image_url: data.user.profile_image_url,
+        role: data.user.role,
+      }));
+      localStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('userId', data.user.user_id.toString());
+
+      alert('회원가입이 완료되었습니다!');
+      router.push('/');
     } catch (error: any) {
-      console.error("회원가입 오류:", error);
-      setError(error.message || "회원가입 중 오류가 발생했습니다.");
+      console.error('회원가입 오류:', error);
+      setError(error.message || '회원가입 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }

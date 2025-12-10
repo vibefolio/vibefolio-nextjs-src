@@ -2,7 +2,7 @@
 // 회원가입 API
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase/client';
+import { supabaseAdmin } from '@/lib/supabase/client';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest) {
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 이메일 중복 확인
-    const { data: existingUser } = await supabase
+    const { data: existingUser } = await supabaseAdmin
       .from('User')
       .select('email')
       .eq('email', email)
@@ -34,8 +34,8 @@ export async function POST(request: NextRequest) {
     // 비밀번호 해시화
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 사용자 생성
-    const { data, error } = await supabase
+    // 사용자 생성 (Service Role로 RLS 우회)
+    const { data, error } = await supabaseAdmin
       .from('User')
       .insert([
         {
