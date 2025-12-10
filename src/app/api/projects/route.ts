@@ -16,12 +16,12 @@ export async function GET(request: NextRequest) {
       .from('Project')
       .select(`
         *,
-        User!inner (
+        User!Project_user_id_fkey (
           user_id,
           nickname,
           profile_image_url
         ),
-        Category!inner (
+        Category (
           category_id,
           name
         )
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       ])
       .select(`
         *,
-        User (
+        User!Project_user_id_fkey (
           user_id,
           nickname,
           profile_image_url
