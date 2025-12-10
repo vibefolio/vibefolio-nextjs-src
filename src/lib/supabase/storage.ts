@@ -30,7 +30,8 @@ export async function uploadImage(
 
     if (error) {
       console.error('이미지 업로드 실패:', error);
-      throw new Error('이미지 업로드에 실패했습니다.');
+      // 에러 메시지 상세화
+      throw new Error(`이미지 업로드 실패: ${error.message}`);
     }
 
     // 공개 URL 가져오기
