@@ -1,5 +1,3 @@
-// src/app/page.tsx
-
 "use client"; // 🚨 StickyMenu의 카테고리 상태 관리를 위해 "use client"가 필수입니다.
 
 import { useState, useEffect } from "react"; // 🚨 상태 관리를 위해 useState, useEffect 임포트
@@ -214,8 +212,9 @@ export default function Home() {
 
   // 카드 클릭 핸들러
   const handleCardClick = (project: ImageDialogProps) => {
-    // 모달 대신 상세 페이지로 이동
-    router.push(`/project/${project.id}`);
+    // 상세 페이지 대신 모달 오픈
+    setSelectedProject(project);
+    setModalOpen(true);
   };
 
   // 프로젝트 등록 핸들러 (로그인 체크)
@@ -244,7 +243,7 @@ export default function Home() {
     <div className="w-full relative bg-gray-50">
       <main className="w-full flex flex-col items-center">
         {/* 1. 메인 배너 - 풀페이지 */}
-        <div className="w-full px-0 py-8 bg-white">
+        <div className="w-full px-0 py-3 bg-white">
           <MainBanner loading={false} gallery={banners} />
         </div>
 

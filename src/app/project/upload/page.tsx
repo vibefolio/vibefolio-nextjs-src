@@ -113,7 +113,8 @@ export default function ProjectUploadPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || '프로젝트 등록에 실패했습니다.');
+        console.error("API Server Error:", data); // 서버 에러 응답 상세 로그
+        throw new Error(data.error || `프로젝트 등록 실패: ${response.statusText}`);
       }
 
       alert('프로젝트가 성공적으로 등록되었습니다!');
