@@ -50,6 +50,7 @@ export default function SignupPage() {
         email: formData.email,
         password: formData.password,
         options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
             nickname: formData.username, // 메타데이터로 전달하면 트리거가 이를 사용해 public.users에 저장함
             profile_image_url: '/globe.svg', // 기본 프로필 이미지
