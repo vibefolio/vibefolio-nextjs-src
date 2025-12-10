@@ -4,6 +4,7 @@
 
 import { useState, useEffect } from "react"; // 🚨 상태 관리를 위해 useState, useEffect 임포트
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { MainBanner } from "@/components/MainBanner";
 import { ImageCard } from "@/components/ImageCard"; // ImageCard 사용
@@ -121,6 +122,7 @@ const DUMMY_IMAGES: ImageDialogProps[] = [
 ];
 
 export default function Home() {
+  const router = useRouter();
   // StickyMenu의 초기값인 'korea'를 기본값으로 설정합니다.
   const [currentCategory, setCurrentCategory] = useState<string>("korea");
   const [projects, setProjects] = useState<ImageDialogProps[]>(DUMMY_IMAGES);
@@ -212,8 +214,8 @@ export default function Home() {
 
   // 카드 클릭 핸들러
   const handleCardClick = (project: ImageDialogProps) => {
-    setSelectedProject(project);
-    setModalOpen(true);
+    // 모달 대신 상세 페이지로 이동
+    router.push(`/project/${project.id}`);
   };
 
   // 프로젝트 등록 핸들러 (로그인 체크)
