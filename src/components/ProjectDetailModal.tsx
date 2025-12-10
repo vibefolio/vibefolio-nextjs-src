@@ -117,22 +117,22 @@ export function ProjectDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto p-0">
-        <div className="grid md:grid-cols-[1.5fr,1fr] gap-0">
+      <DialogContent className="max-w-[95vw] w-[1400px] h-[90vh] p-0 overflow-hidden">
+        <div className="grid grid-cols-[1fr,400px] h-full">
           {/* 왼쪽: 이미지 영역 */}
-          <div className="bg-gray-100 flex items-center justify-center p-8">
+          <div className="bg-neutral-100 flex items-center justify-center p-8 overflow-auto">
             <img
               src={project.urls.full}
               alt={project.alt_description || "프로젝트 이미지"}
-              className="w-full h-auto object-contain max-h-[70vh]"
+              className="w-full h-auto object-contain"
             />
           </div>
 
-          {/* 오른쪽: 정보 및 인터랙션 영역 */}
-          <div className="flex flex-col h-full">
-            {/* 헤더 */}
-            <DialogHeader className="p-6 pb-4">
-              <div className="flex items-center justify-between">
+          {/* 오른쪽: 사이드바 */}
+          <div className="flex flex-col h-full bg-white border-l">
+            {/* 헤더 - 프로필 정보 */}
+            <div className="p-6 border-b">
+              <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-12 h-12">
                     <img
@@ -143,42 +143,32 @@ export function ProjectDetailModal({
                   </Avatar>
                   <div>
                     <Link href={`/creator/${project.user.username}`}>
-                      <DialogTitle className="text-lg font-semibold hover:text-[#4ACAD4] transition-colors cursor-pointer">
+                      <h3 className="text-base font-semibold hover:text-[#4ACAD4] transition-colors cursor-pointer">
                         {project.user.username}
-                      </DialogTitle>
+                      </h3>
                     </Link>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-xs text-gray-500">
                       {new Date(project.created_at).toLocaleDateString("ko-KR")}
                     </p>
                   </div>
                 </div>
               </div>
-            </DialogHeader>
 
-            <Separator />
-
-            {/* 액션 버튼들 */}
-            <div className="flex items-center justify-between px-6 py-4">
-              <div className="flex items-center gap-2">
+              {/* 액션 버튼들 */}
+              <div className="flex items-center gap-2 mb-4">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleLike}
-                  className={liked ? "text-red-500" : ""}
+                  className={`flex-1 ${liked ? "text-red-500" : ""}`}
                 >
                   <Heart
-                    size={20}
+                    size={18}
                     fill={liked ? "currentColor" : "none"}
                     className="mr-1"
                   />
                   {addCommas(project.likes + (liked ? 1 : 0))}
                 </Button>
-                <Button variant="ghost" size="sm">
-                  <Eye size={20} className="mr-1" />
-                  {addCommas(Math.floor(Math.random() * 10000))}
-                </Button>
-              </div>
-              <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -186,66 +176,20 @@ export function ProjectDetailModal({
                   className={bookmarked ? "text-blue-500" : ""}
                 >
                   <Bookmark
-                    size={20}
+                    size={18}
                     fill={bookmarked ? "currentColor" : "none"}
                   />
                 </Button>
                 <Button variant="ghost" size="icon" onClick={handleShare}>
-                  <Share2 size={20} />
+                  <Share2 size={18} />
                 </Button>
               </div>
-            </div>
 
-            <Separator />
-
-            {/* 설명 */}
-            <div className="px-6 py-4 flex-1 overflow-y-auto">
-              <h3 className="font-semibold mb-2">프로젝트 설명</h3>
-              <p className="text-sm text-gray-700">
-                {project.description ||
-                  project.alt_description ||
-                  "설명이 없습니다."}
-              </p>
-
-              {/* 댓글 섹션 */}
-              <div className="mt-6">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <MessageCircle size={18} />
-                  댓글 {comments.length}
-                </h3>
-                <div className="space-y-4">
-                  {comments.map((c, idx) => (
-                    <div key={idx} className="flex gap-3">
-                      <Avatar className="w-8 h-8">
-                        <div className="w-full h-full bg-gray-300 flex items-center justify-center text-xs">
-                          {c.user[0]}
-                        </div>
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-sm">
-                            {c.user}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {c.time}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-700 mt-1">{c.text}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* 하단: 1:1 문의 및 댓글 입력 */}
-            <div className="p-6 space-y-3">
+              {/* 1:1 문의 버튼 */}
               <Dialog open={inquiryOpen} onOpenChange={setInquiryOpen}>
                 <DialogTrigger asChild>
                   <Button className="w-full bg-[#4ACAD4] hover:bg-[#41a3aa]">
-                    <Send size={18} className="mr-2" />
+                    <Send size={16} className="mr-2" />
                     1:1 문의하기
                   </Button>
                 </DialogTrigger>
@@ -286,13 +230,74 @@ export function ProjectDetailModal({
                   </div>
                 </DialogContent>
               </Dialog>
+            </div>
 
+            {/* 스크롤 가능한 컨텐츠 영역 */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              {/* 프로젝트 설명 */}
+              <div className="p-6 border-b">
+                <h4 className="font-semibold mb-3 text-sm">프로젝트 설명</h4>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {project.description ||
+                    project.alt_description ||
+                    "설명이 없습니다."}
+                </p>
+              </div>
+
+              {/* 프로젝트 정보 */}
+              <div className="p-6 border-b">
+                <h4 className="font-semibold mb-3 text-sm">프로젝트 정보</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Eye size={16} />
+                    <span>조회수: {addCommas(Math.floor(Math.random() * 10000))}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Heart size={16} />
+                    <span>좋아요: {addCommas(project.likes)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 댓글 섹션 */}
+              <div className="p-6">
+                <h4 className="font-semibold mb-4 flex items-center gap-2 text-sm">
+                  <MessageCircle size={16} />
+                  댓글 {comments.length}
+                </h4>
+                <div className="space-y-4 mb-4">
+                  {comments.map((c, idx) => (
+                    <div key={idx} className="flex gap-3">
+                      <Avatar className="w-8 h-8 flex-shrink-0">
+                        <div className="w-full h-full bg-gray-300 flex items-center justify-center text-xs">
+                          {c.user[0]}
+                        </div>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold text-sm">
+                            {c.user}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {c.time}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-700 break-words">{c.text}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* 하단 고정: 댓글 입력 */}
+            <div className="p-4 border-t bg-white">
               <div className="flex gap-2">
                 <Textarea
                   placeholder="댓글을 입력하세요..."
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  className="flex-1 min-h-[60px] resize-none"
+                  className="flex-1 min-h-[60px] max-h-[120px] resize-none text-sm"
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
@@ -306,7 +311,7 @@ export function ProjectDetailModal({
                   size="icon"
                   className="self-end"
                 >
-                  <Send size={18} />
+                  <Send size={16} />
                 </Button>
               </div>
             </div>

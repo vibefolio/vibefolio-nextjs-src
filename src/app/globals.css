@@ -29,7 +29,7 @@
     --input: 0 0% 90%;
     --ring: 0 0% 13%;
     --radius: 0.5rem;
-    
+
     /* 비핸스 스타일 색상 */
     --behance-blue: 0 87% 58%;
     --behance-hover: 0 0% 96%;
@@ -66,9 +66,9 @@
 
   body {
     @apply bg-white text-foreground;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-      sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+      "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
+      "Helvetica Neue", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -131,7 +131,7 @@
   }
 
   .image-hover::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
@@ -172,8 +172,14 @@
 
   /* 그리드 레이아웃 */
   .masonry-grid {
-    column-count: 4;
+    column-count: 5;
     column-gap: 24px;
+  }
+
+  @media (max-width: 1536px) {
+    .masonry-grid {
+      column-count: 4;
+    }
   }
 
   @media (max-width: 1280px) {

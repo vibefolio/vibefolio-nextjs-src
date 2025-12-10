@@ -213,7 +213,7 @@ export function Header({
         <div className="h-full flex items-center gap-10">
           {/* 로고 */}
           <Link href="/" className="flex items-center">
-            <img src={ASSETS_PATH} alt="@LOGO" className="h-14" />
+            <img src={ASSETS_PATH} alt="@LOGO" className="w-[200px] h-auto" />
           </Link>
           <nav className="h-full flex items-center gap-8">
             {menu.map((item, index) => (
