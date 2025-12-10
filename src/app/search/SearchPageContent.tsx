@@ -39,57 +39,67 @@ export default function SearchPageContent() {
   const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [searchResults, setSearchResults] = useState<Project[]>([]);
-  const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [loading, setLoading] = useState(false);
 
+  // 검색 실행
   useEffect(() => {
-    // 모든 프로젝트 로드
-    const loadProjects = () => {
+    const performSearch = async () => {
+      setLoading(true);
       try {
-        const savedProjects = localStorage.getItem("projects");
-        if (savedProjects) {
-          const projects = JSON.parse(savedProjects);
-          setAllProjects(projects);
+        let url = '/api/projects?';
+        
+        if (searchQuery.trim()) {
+          url += `search=${encodeURIComponent(searchQuery)}&`;
+        }
+        
+        if (selectedCategory && selectedCategory !== 'all') {
+          url += `category=${selectedCategory}&`;
+        }
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (response.ok && data.projects) {
+          // API 데이터를 기존 형식으로 변환
+          const formattedProjects = data.projects.map((p: any) => ({
+            id: p.project_id.toString(),
+            title: p.title,
+            urls: {
+              full: p.thumbnail_url || '/placeholder.jpg',
+              regular: p.thumbnail_url || '/placeholder.jpg',
+            },
+            user: {
+              username: p.User?.nickname || 'Unknown',
+              profile_image: {
+                small: p.User?.profile_image_url || '/globe.svg',
+                large: p.User?.profile_image_url || '/globe.svg',
+              },
+            },
+            likes: 0,
+            views: p.views || 0,
+            description: p.content_text,
+            alt_description: p.title,
+            created_at: p.created_at,
+            width: 400,
+            height: 300,
+            category: p.Category?.name || 'korea',
+            tags: [],
+          }));
+
+          setSearchResults(formattedProjects);
         }
       } catch (error) {
-        console.error("프로젝트 로딩 실패:", error);
+        console.error('검색 실패:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
-    loadProjects();
-  }, []);
+    performSearch();
+  }, [searchQuery, selectedCategory]);
 
-  useEffect(() => {
-    // 검색 실행
-    if (searchQuery.trim() === "") {
-      setSearchResults(allProjects);
-      return;
-    }
 
-    const query = searchQuery.toLowerCase();
-    const filtered = allProjects.filter((project) => {
-      // 제목 검색
-      const titleMatch = project.title?.toLowerCase().includes(query);
-      
-      // 설명 검색
-      const descriptionMatch = 
-        project.description?.toLowerCase().includes(query) ||
-        project.alt_description?.toLowerCase().includes(query);
-      
-      // 태그 검색
-      const tagsMatch = project.tags?.some((tag) =>
-        tag.toLowerCase().includes(query)
-      );
-      
-      // 카테고리 필터
-      const categoryMatch = 
-        selectedCategory === "all" || project.category === selectedCategory;
-
-      return (titleMatch || descriptionMatch || tagsMatch) && categoryMatch;
-    });
-
-    setSearchResults(filtered);
-  }, [searchQuery, allProjects, selectedCategory]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

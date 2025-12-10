@@ -1,5 +1,5 @@
 // src/app/api/projects/route.ts
-// 프로젝트 목록 조회 API
+// 프로젝트 목록 조회 및 생성 API
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase/client';
@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
     const userId = searchParams.get('userId');
     const limit = searchParams.get('limit');
+    const search = searchParams.get('search'); // 검색어
 
     let query = supabase
       .from('Project')
@@ -25,7 +26,13 @@ export async function GET(request: NextRequest) {
           name
         )
       `)
+      .eq('is_deleted', false)
       .order('created_at', { ascending: false });
+
+    // 검색어 필터 (제목 또는 내용)
+    if (search) {
+      query = query.or(`title.ilike.%${search}%,content_text.ilike.%${search}%`);
+    }
 
     // 카테고리 필터
     if (category && category !== 'korea' && category !== 'all') {
