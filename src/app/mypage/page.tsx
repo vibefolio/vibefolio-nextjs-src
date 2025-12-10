@@ -9,33 +9,59 @@ import { Button } from "@/components/ui/button";
 import { getTotalLikesCount } from "@/lib/likes";
 import { getTotalBookmarksCount } from "@/lib/bookmarks";
 
+import { supabase } from "@/lib/supabase/client";
+// ... imports
+
 export default function MyPage() {
   const router = useRouter();
   const [totalLikes, setTotalLikes] = useState(0);
   const [totalBookmarks, setTotalBookmarks] = useState(0);
   const [totalProjects, setTotalProjects] = useState(0);
+  const [userNickname, setUserNickname] = useState("사용자");
 
   useEffect(() => {
-    // 통계 로드
-    const loadStats = () => {
-      const likes = getTotalLikesCount();
-      const bookmarks = getTotalBookmarksCount();
-      
-      // 내가 업로드한 프로젝트 수 (임시)
-      const projects = localStorage.getItem("projects");
-      const projectCount = projects ? JSON.parse(projects).length : 0;
-      
-      setTotalLikes(likes);
-      setTotalBookmarks(bookmarks);
-      setTotalProjects(projectCount);
+    const fetchStats = async () => {
+      // 현재 로그인한 사용자 확인
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        // 비로그인 상태면 로그인 페이지로 리다이렉트
+        router.push('/login');
+        return;
+      }
+
+      // 1. 좋아요 수 조회
+      const { count: likesCount } = await supabase
+        .from('Like')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
+      // 2. 북마크 수 조회
+      const { count: bookmarksCount } = await supabase
+        .from('Wishlist')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
+      // 3. 내 프로젝트 수 조회
+      const { count: projectsCount } = await supabase
+        .from('Project')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+        
+      // 4. 사용자 닉네임 조회
+      const { data: userData } = await supabase
+        .from('users')
+        .select('nickname')
+        .eq('id', user.id)
+        .single() as { data: any, error: any }; // 타입 단언 추가
+
+      setTotalLikes(likesCount || 0);
+      setTotalBookmarks(bookmarksCount || 0);
+      setTotalProjects(projectsCount || 0);
+      if (userData?.nickname) setUserNickname(userData.nickname);
     };
 
-    loadStats();
-
-    // 통계 업데이트
-    const interval = setInterval(loadStats, 1000);
-    return () => clearInterval(interval);
-  }, []);
+    fetchStats();
+  }, [router]);
 
   const menuItems = [
     {
@@ -89,7 +115,7 @@ export default function MyPage() {
   ];
 
   return (
-    <div className="w-full min-h-screen bg-gray-50">
+    <div className="w-full min-h-screen bg-gray-50 pt-24">
       {/* 헤더 */}
       <div className="w-full bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-8">

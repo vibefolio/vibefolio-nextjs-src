@@ -59,12 +59,21 @@ export default function LoginPage() {
       localStorage.setItem('isLoggedIn', 'true');
       localStorage.setItem('userId', userData.id); // UUID 저장
 
-      alert('로그인 성공!');
+      // alert('로그인 성공!'); // 성공 메시지 제거
       window.location.href = '/';
     } catch (error: any) {
       console.error('로그인 오류:', error);
-      setError(error.message || '로그인 중 오류가 발생했습니다.');
-      alert(`로그인 오류: ${error.message}`);
+      let errorMessage = '로그인 중 오류가 발생했습니다.';
+      
+      // 에러 메시지 한글화
+      if (error.message.includes('Invalid login credentials')) {
+        errorMessage = '아이디 또는 비밀번호가 일치하지 않습니다.';
+      } else if (error.message.includes('Email not confirmed')) {
+        errorMessage = '이메일 인증이 완료되지 않았습니다.';
+      }
+      
+      setError(errorMessage);
+      // alert는 띄우지 않음
     } finally {
       setLoading(false);
     }
