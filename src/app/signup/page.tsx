@@ -4,8 +4,25 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
+
+const CATEGORIES = [
+  "영상/모션그래픽",
+  "그래픽 디자인",
+  "브랜딩/편집",
+  "UI/UX",
+  "일러스트레이션",
+  "디지털 아트",
+  "AI",
+  "캐릭터 디자인",
+  "제품/패키지 디자인",
+  "포토그래피",
+  "타이포그래피",
+  "공예",
+  "파인아트",
+];
 
 export default function SignupPage() {
   const router = useRouter();
@@ -14,56 +31,64 @@ export default function SignupPage() {
     password: "",
     passwordConfirm: "",
     username: "",
+    interests: [] as string[],
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const handleInterestToggle = (category: string) => {
+    setFormData(prev => {
+      const interests = prev.interests.includes(category)
+        ? prev.interests.filter(c => c !== category)
+        : prev.interests.length < 5
+        ? [...prev.interests, category]
+        : prev.interests;
+      return { ...prev, interests };
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("회원가입 시도:", formData);
     setError("");
 
     if (formData.password !== formData.passwordConfirm) {
       setError("비밀번호가 일치하지 않습니다.");
-      alert("비밀번호가 일치하지 않습니다.");
       return;
     }
 
     if (formData.password.length < 6) {
       setError("비밀번호는 최소 6자 이상이어야 합니다.");
-      alert("비밀번호는 최소 6자 이상이어야 합니다.");
       return;
     }
 
     if (!formData.username.trim()) {
       setError("사용자 이름을 입력해주세요.");
-      alert("사용자 이름을 입력해주세요.");
+      return;
+    }
+
+    if (formData.interests.length === 0) {
+      setError("최소 1개의 관심 카테고리를 선택해주세요.");
       return;
     }
 
     setLoading(true);
 
     try {
-      // 1. Supabase Auth 회원가입
-      console.log("Supabase Auth 회원가입 시도...");
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
-            nickname: formData.username, // 메타데이터로 전달하면 트리거가 이를 사용해 public.users에 저장함
-            profile_image_url: '/globe.svg', // 기본 프로필 이미지
+            nickname: formData.username,
+            profile_image_url: '/globe.svg',
+            interests: formData.interests,
           },
         },
       });
 
       if (authError) throw authError;
-      if (!authData.user) throw new Error("회원가입에 실패했습니다. (No User Data)");
-
-      console.log("Supabase Auth 가입 성공:", authData.user);
-      
-      // 트리거가 public.users를 생성하므로 클라이언트에서 별도 INSERT 불필요
+      if (!authData.user) throw new Error("회원가입에 실패했습니다.");
 
       alert('회원가입이 완료되었습니다! 로그인 페이지로 이동합니다.');
       router.push('/login');
@@ -71,7 +96,6 @@ export default function SignupPage() {
     } catch (error: any) {
       console.error('회원가입 오류:', error);
       setError(error.message || '회원가입 중 오류가 발생했습니다.');
-      alert(`회원가입 오류: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -79,7 +103,7 @@ export default function SignupPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
-      <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-lg shadow-lg">
+      <div className="w-full max-w-2xl space-y-8 bg-white p-8 rounded-lg shadow-lg">
         <div>
           <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
             회원가입
@@ -169,6 +193,34 @@ export default function SignupPage() {
                 }
                 placeholder="비밀번호를 다시 입력하세요"
               />
+            </div>
+
+            {/* 관심 카테고리 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                관심 카테고리 (최소 1개, 최대 5개)
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {CATEGORIES.map((category) => (
+                  <div key={category} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={category}
+                      checked={formData.interests.includes(category)}
+                      onCheckedChange={() => handleInterestToggle(category)}
+                      disabled={!formData.interests.includes(category) && formData.interests.length >= 5}
+                    />
+                    <label
+                      htmlFor={category}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      {category}
+                    </label>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                선택된 카테고리: {formData.interests.length}/5
+              </p>
             </div>
           </div>
 
