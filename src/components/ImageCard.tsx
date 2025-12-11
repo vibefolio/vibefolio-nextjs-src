@@ -3,7 +3,7 @@
 "use client";
 
 import React, { forwardRef } from "react";
-import { Heart, Eye } from "lucide-react";
+import { Heart, BarChart3 } from "lucide-react";
 import { addCommas } from "@/lib/format/comma";
 
 // Props 인터페이스 정의
@@ -53,10 +53,10 @@ export const ImageCard = forwardRef<HTMLDivElement, ImageCardProps>(
                 <Heart size={20} fill="white" />
                 <span className="font-medium">{addCommas(props.likes)}</span>
               </div>
-              {props.views && (
+              {props.views !== undefined && (
                 <div className="flex items-center gap-2">
-                  <Eye size={20} />
-                  <span className="font-medium">{addCommas(props.views)}</span>
+                  <BarChart3 size={20} />
+                  <span className="font-medium text-lg">{addCommas(props.views)}</span>
                 </div>
               )}
             </div>
@@ -75,14 +75,14 @@ export const ImageCard = forwardRef<HTMLDivElement, ImageCardProps>(
               <p className="text-sm font-medium text-primary">{props.user.username}</p>
             </div>
             <div className="flex items-center gap-3 text-secondary">
-              <div className="flex items-center gap-1">
-                <Heart size={14} className="text-gray-400" />
-                <span className="text-xs">{addCommas(props.likes)}</span>
+              <div className="flex items-center gap-1.5">
+                <Heart size={15} className="text-red-400" />
+                <span className="text-sm font-semibold text-gray-700">{addCommas(props.likes)}</span>
               </div>
               {props.views !== undefined && (
-                <div className="flex items-center gap-1">
-                  <Eye size={14} className="text-gray-400" />
-                  <span className="text-xs">{addCommas(props.views)}</span>
+                <div className="flex items-center gap-1.5">
+                  <BarChart3 size={15} className="text-blue-400" />
+                  <span className="text-sm font-semibold text-gray-700">{addCommas(props.views)}</span>
                 </div>
               )}
             </div>
