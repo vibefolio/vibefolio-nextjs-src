@@ -84,7 +84,7 @@ export default function MyPage() {
             `)
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
-        } else {
+        } else if (activeTab === 'bookmarks') {
           // 북마크한 프로젝트
           query = supabase
             .from('Wishlist')
@@ -94,6 +94,39 @@ export default function MyPage() {
             `)
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
+        } else if (activeTab === 'inquiries') {
+          // 1:1 문의 (받은 문의)
+          query = supabase
+            .from('Proposal')
+            .select('*')
+            .eq('receiver_id', userId)
+            .order('created_at', { ascending: false });
+        } else if (activeTab === 'proposals') {
+          // 제안하기 (보낸 제안)
+          query = supabase
+            .from('Proposal')
+            .select('*')
+            .eq('sender_id', userId)
+            .order('created_at', { ascending: false });
+        } else if (activeTab === 'comments') {
+          // 내가 쓴 댓글
+          query = supabase
+            .from('Comment')
+            .select(`
+              *,
+              Project (
+                project_id,
+                title,
+                thumbnail_url
+              )
+            `)
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+        } else {
+          // 기본값 (빈 배열)
+          setProjects([]);
+          setLoading(false);
+          return;
         }
 
         const { data: result, error } = await query;
@@ -221,6 +254,42 @@ export default function MyPage() {
               <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-500" />
             )}
           </button>
+          <button
+            onClick={() => setActiveTab('inquiries')}
+            className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors relative whitespace-nowrap ${
+              activeTab === 'inquiries' ? 'text-purple-500' : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            <MessageSquare size={18} />
+            1:1 문의
+            {activeTab === 'inquiries' && (
+              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-purple-500" />
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('proposals')}
+            className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors relative whitespace-nowrap ${
+              activeTab === 'proposals' ? 'text-green-500' : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            <Send size={18} />
+            제안하기
+            {activeTab === 'proposals' && (
+              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-green-500" />
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('comments')}
+            className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors relative whitespace-nowrap ${
+              activeTab === 'comments' ? 'text-orange-500' : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            <MessageCircle size={18} />
+            내가 쓴 댓글
+            {activeTab === 'comments' && (
+              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-orange-500" />
+            )}
+          </button>
         </div>
 
         {/* 콘텐츠 그리드 */}
@@ -240,15 +309,24 @@ export default function MyPage() {
               {activeTab === 'projects' && <Upload className="text-gray-300" />}
               {activeTab === 'likes' && <Heart className="text-gray-300" />}
               {activeTab === 'bookmarks' && <Bookmark className="text-gray-300" />}
+              {activeTab === 'inquiries' && <MessageSquare className="text-gray-300" />}
+              {activeTab === 'proposals' && <Send className="text-gray-300" />}
+              {activeTab === 'comments' && <MessageCircle className="text-gray-300" />}
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-1">
               {activeTab === 'projects' && "아직 업로드한 프로젝트가 없습니다"}
               {activeTab === 'likes' && "좋아요한 프로젝트가 없습니다"}
               {activeTab === 'bookmarks' && "북마크한 프로젝트가 없습니다"}
+              {activeTab === 'inquiries' && "받은 문의가 없습니다"}
+              {activeTab === 'proposals' && "보낸 제안이 없습니다"}
+              {activeTab === 'comments' && "작성한 댓글이 없습니다"}
             </h3>
             <p className="text-gray-500 mb-6">
               {activeTab === 'projects' && "멋진 작품을 공유해보세요!"}
               {(activeTab === 'likes' || activeTab === 'bookmarks') && "마음에 드는 작품을 찾아보세요!"}
+              {activeTab === 'inquiries' && "다른 크리에이터들과 소통해보세요!"}
+              {activeTab === 'proposals' && "프로젝트에 제안을 보내보세요!"}
+              {activeTab === 'comments' && "프로젝트에 댓글을 남겨보세요!"}
             </p>
             {activeTab === 'projects' ? (
               <Button onClick={() => router.push('/project/upload')} className="bg-[#4ACAD4] hover:bg-[#3db8c0]">프로젝트 업로드</Button>
