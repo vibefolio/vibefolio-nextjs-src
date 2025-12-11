@@ -250,12 +250,32 @@ export function ProjectDetailModalV2({
 
           <div className="flex h-full">
             {/* 메인 이미지 영역 - 66% */}
-            <div className="w-[66%] bg-gray-50 flex items-center justify-center p-8">
-              <img
-                src={project.urls.full}
-                alt={project.alt_description || "Project Image"}
-                className="max-w-full max-h-full object-contain"
-              />
+            <div className="w-[66%] bg-gray-50 flex flex-col">
+              {/* 프로젝트 정보 헤더 */}
+              <div className="p-6 bg-white border-b border-gray-100">
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                  {project.description || project.alt_description || "제목 없음"}
+                </h1>
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={project.user.profile_image.large} />
+                    <AvatarFallback><User size={16} /></AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium text-sm">{project.user.username}</p>
+                    <p className="text-xs text-gray-500">{dayjs(project.created_at).format('YYYY.MM.DD')}</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* 이미지 */}
+              <div className="flex-1 flex items-center justify-center p-8">
+                <img
+                  src={project.urls.full}
+                  alt={project.alt_description || "Project Image"}
+                  className="max-w-full max-h-full object-contain"
+                />
+              </div>
             </div>
 
             {/* 액션바 - 48px */}

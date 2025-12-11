@@ -176,24 +176,45 @@ export default function MyPage() {
       <div className="max-w-7xl mx-auto px-6 py-8">
         
         {/* 프로필 섹션 */}
-        <div className="bg-white rounded-xl p-8 mb-8 border border-gray-100 shadow-sm flex flex-col md:flex-row items-center md:items-start gap-8">
-          {/* 아바타 */}
-          <div className="relative group">
-            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg">
-              <img 
-                src={userProfile?.profile_image_url || "/globe.svg"} 
-                alt="Profile" 
-                className="w-full h-full object-cover"
-              />
-            </div>
+        <div className="bg-white rounded-xl mb-8 border border-gray-100 shadow-sm overflow-hidden">
+          {/* 커버 이미지 */}
+          <div className="h-48 bg-gradient-to-r from-[#4ACAD4] to-[#05BCC6] relative">
+            <div className="absolute inset-0 bg-black/10"></div>
           </div>
           
-          {/* 정보 */}
-          <div className="flex-1 text-center md:text-left">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">{userProfile?.nickname || "사용자"}</h1>
-            <p className="text-gray-500 mb-6">{userProfile?.email}</p>
+          {/* 프로필 정보 */}
+          <div className="px-8 pb-8">
+            {/* 아바타 (커버 이미지와 겹치게) */}
+            <div className="relative -mt-16 mb-4">
+              <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg bg-white">
+                <img 
+                  src={userProfile?.profile_image_url || "/globe.svg"} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
             
-            <div className="flex justify-center md:justify-start gap-8 text-center">
+            {/* 정보 */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">{userProfile?.nickname || "사용자"}</h1>
+                <p className="text-gray-500 mb-4">{userProfile?.email}</p>
+                
+                {/* 자기소개 (추후 추가 가능) */}
+                <p className="text-gray-700 text-sm max-w-2xl">
+                  안녕하세요! 크리에이티브한 작품을 공유하는 {userProfile?.nickname || "사용자"}입니다.
+                </p>
+              </div>
+              
+              <Button variant="outline" onClick={() => router.push('/mypage/profile')}>
+                <Settings className="w-4 h-4 mr-2" />
+                프로필 설정
+              </Button>
+            </div>
+            
+            {/* 통계 */}
+            <div className="flex gap-8 pt-6 border-t border-gray-100">
               <div>
                 <div className="text-2xl font-bold text-gray-900">{stats.projects}</div>
                 <div className="text-sm text-gray-500">Projects</div>
@@ -208,12 +229,6 @@ export default function MyPage() {
               </div>
             </div>
           </div>
-
-          {/* 설정 버튼 */}
-          <Button variant="outline" onClick={() => router.push('/mypage/profile')}>
-            <Settings className="w-4 h-4 mr-2" />
-            프로필 설정
-          </Button>
         </div>
 
         {/* 탭 네비게이션 */}

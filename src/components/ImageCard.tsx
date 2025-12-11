@@ -33,7 +33,7 @@ export const ImageCard = forwardRef<HTMLDivElement, ImageCardProps>(
 
     return (
       <div
-        className="masonry-item behance-card cursor-pointer group"
+        className="masonry-item behance-card cursor-pointer group transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
         ref={ref}
         onClick={onClick}
         {...rest}
