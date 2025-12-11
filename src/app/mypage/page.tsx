@@ -34,13 +34,12 @@ export default function MyPage() {
       }
       setUserId(user.id);
 
-      // 프로필 가져오기
-      const { data: profile } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      setUserProfile(profile);
+      // Auth user_metadata에서 프로필 가져오기
+      setUserProfile({
+        nickname: user.user_metadata?.nickname || user.email?.split('@')[0] || '사용자',
+        email: user.email,
+        profile_image_url: user.user_metadata?.profile_image_url || '/globe.svg',
+      });
 
       // 통계 카운트 가져오기 (Promise.all로 병렬 처리)
       const [projectsCount, likesCount, bookmarksCount] = await Promise.all([
@@ -72,10 +71,7 @@ export default function MyPage() {
           // 내 프로젝트
           query = supabase
             .from('Project')
-            .select(`
-              *,
-              users (nickname, profile_image_url)
-            `)
+            .select('*')
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
         } else if (activeTab === 'likes') {
@@ -84,10 +80,7 @@ export default function MyPage() {
             .from('Like')
             .select(`
               created_at,
-              Project (
-                *,
-                users (nickname, profile_image_url)
-              )
+              Project (*)
             `)
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
@@ -97,10 +90,7 @@ export default function MyPage() {
             .from('Wishlist')
             .select(`
               created_at,
-              Project (
-                *,
-                users (nickname, profile_image_url)
-              )
+              Project (*)
             `)
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
@@ -123,10 +113,10 @@ export default function MyPage() {
               regular: p.thumbnail_url || "https://images.unsplash.com/photo-1600607686527-6fb886090705?auto=format&fit=crop&q=80&w=800"
             },
             user: {
-              username: p.users?.nickname || "Unknown",
+              username: userProfile?.nickname || "Unknown",
               profile_image: {
-                small: p.users?.profile_image_url || "https://images.unsplash.com/placeholder-avatars/extra-large.jpg?auto=format&fit=crop&w=32&h=32&q=60",
-                large: p.users?.profile_image_url || "https://images.unsplash.com/placeholder-avatars/extra-large.jpg?auto=format&fit=crop&w=150&h=150&q=60"
+                small: userProfile?.profile_image_url || "/globe.svg",
+                large: userProfile?.profile_image_url || "/globe.svg"
               }
             },
             likes: p.likes || 0,
