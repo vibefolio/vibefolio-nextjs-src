@@ -25,7 +25,6 @@ export async function GET(
         )
       `)
       .eq('user_id', id)
-      .eq('is_deleted', false)
       .order('created_at', { ascending: false });
 
     if (error) {

@@ -101,11 +101,19 @@ export default function ProfileSettingsPage() {
 
       // 이미지가 새로 업로드되었다면 Supabase Storage에 업로드
       if (imageFile) {
-        // dynamic import to avoid circular dependency or use direct import if clean
-        const { uploadImage } = await import("@/lib/supabase/storage");
-        imageUrl = await uploadImage(imageFile, 'profiles');
+        console.log('이미지 업로드 시작...', imageFile.name);
+        try {
+          const { uploadImage } = await import("@/lib/supabase/storage");
+          imageUrl = await uploadImage(imageFile, 'profiles');
+          console.log('이미지 업로드 성공:', imageUrl);
+        } catch (uploadError: any) {
+          console.error('이미지 업로드 오류:', uploadError);
+          alert(`이미지 업로드 실패: ${uploadError.message}`);
+          return;
+        }
       }
 
+      console.log('프로필 업데이트 API 호출...');
       const response = await fetch(`/api/users/${userId}`, {
         method: 'PUT',
         headers: {
@@ -113,23 +121,26 @@ export default function ProfileSettingsPage() {
         },
         body: JSON.stringify({
           nickname: profile.username,
-          // bio: profile.bio, // DB 스키마에 bio 컬럼이 없어 주석 처리
+          bio: profile.bio,
           profile_image_url: imageUrl,
         }),
       });
 
       const data = await response.json();
+      console.log('API 응답:', data);
 
       if (response.ok) {
-        // localStorage 업데이트는 이제 불필요할 수 있으나 호환성을 위해 유지
-        // ...
         alert('프로필이 저장되었습니다!');
+        // 프로필 이미지 업데이트
+        setProfile(prev => ({ ...prev, profileImage: imageUrl }));
+        setImageFile(null);
       } else {
+        console.error('API 오류:', data);
         alert(data.error || '프로필 저장에 실패했습니다.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('프로필 저장 실패:', error);
-      alert('프로필 저장 중 오류가 발생했습니다.');
+      alert(`프로필 저장 중 오류가 발생했습니다: ${error.message || error}`);
     }
   };
 
