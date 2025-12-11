@@ -2,7 +2,7 @@
 // 프로젝트 목록 조회 및 생성 API
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase/client';
+import { supabase, supabaseAdmin } from '@/lib/supabase/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await (supabaseAdmin as any)
       .from('Project')
       .insert([
         {
