@@ -1,133 +1,43 @@
-"use client"; // 🚨 StickyMenu의 카테고리 상태 관리를 위해 "use client"가 필수입니다.
+"use client";
 
-import { useState, useEffect } from "react"; // 🚨 상태 관리를 위해 useState, useEffect 임포트
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { MainBanner } from "@/components/MainBanner";
-import { ImageCard } from "@/components/ImageCard"; // ImageCard 사용
-import { StickyMenu } from "@/components/StickyMenu"; // 🚨 StickyMenu 임포트
-import { ProjectDetailModalV2 } from "@/components/ProjectDetailModalV2"; // 🚨 새로운 모달 사용
+import { ImageCard } from "@/components/ImageCard";
+import { StickyMenu } from "@/components/StickyMenu";
+import { ProjectDetailModalV2 } from "@/components/ProjectDetailModalV2";
 import { supabase } from "@/lib/supabase/client";
+import { getUserInfo } from "@/lib/getUserInfo";
 
-// 🚨 임시 ImageCard Props 타입 정의 (StickyMenu와의 연결을 위해 value를 추가)
 interface ImageDialogProps {
   id: string;
   urls: { full: string; regular: string };
   user: { username: string; profile_image: { small: string; large: string } };
   likes: number;
+  views?: number;
   description: string | null;
   alt_description: string | null;
   created_at: string;
   width: number;
   height: number;
-  // 🚨 임시로 카테고리 필터링을 위한 'category' 속성을 추가합니다.
   category: string;
+  userId?: string;
 }
-
-// 🚨 임시 더미 데이터 생성 (카테고리 데이터 추가)
-const DUMMY_IMAGES: ImageDialogProps[] = [
-  // StickyMenu의 '전체' (korea)에 해당하는 데이터
-  {
-    id: "1",
-    urls: {
-      regular: "/window.svg",
-      full: "/window.svg",
-    },
-    user: {
-      username: "creator1",
-      profile_image: {
-        large: "/globe.svg",
-        small: "/globe.svg",
-      },
-    },
-    likes: 1234,
-    description: "전체 카테고리 이미지 1",
-    alt_description: "설명",
-    created_at: "2023-01-01",
-    width: 1000,
-    height: 1000,
-    category: "korea",
-  },
-  // StickyMenu의 'AI' (ai)에 해당하는 데이터
-  {
-    id: "2",
-    urls: {
-      regular: "/file.svg",
-      full: "/file.svg",
-    },
-    user: {
-      username: "creator2",
-      profile_image: {
-        large: "/globe.svg",
-        small: "/globe.svg",
-      },
-    },
-    likes: 987,
-    description: "AI 카테고리 이미지 1",
-    alt_description: "설명",
-    created_at: "2023-01-02",
-    width: 1000,
-    height: 1000,
-    category: "ai",
-  },
-  {
-    id: "3",
-    urls: {
-      regular: "/next.svg",
-      full: "/next.svg",
-    },
-    user: {
-      username: "creator3",
-      profile_image: {
-        large: "/globe.svg",
-        small: "/globe.svg",
-      },
-    },
-    likes: 456,
-    description: "전체 카테고리 이미지 2",
-    alt_description: "설명",
-    created_at: "2023-01-03",
-    width: 1000,
-    height: 1000,
-    category: "korea",
-  },
-
-  // 나머지 데이터는 'video' 카테고리에 할당
-  ...Array(12) // 15개로 증가 (3 + 12)
-    .fill(0)
-    .map((_, i) => ({
-      id: String(i + 4),
-      urls: {
-        regular: "/window.svg",
-        full: "/window.svg",
-      },
-      user: {
-        username: `creator${i + 4}`,
-        profile_image: {
-          large: "/globe.svg",
-          small: "/globe.svg",
-        },
-      },
-      likes: (i + 1) * 100,
-      description: `영상/모션그래픽 이미지 ${i + 1}`,
-      alt_description: `설명 ${i + 1}`,
-      created_at: `2023-01-0${i + 4}`,
-      width: 1000,
-      height: 1000,
-      category: "video",
-    })),
-];
 
 export default function Home() {
   const router = useRouter();
-  // StickyMenu의 초기값인 'korea'를 기본값으로 설정합니다.
-  const [currentCategory, setCurrentCategory] = useState<string>("korea");
-  const [projects, setProjects] = useState<ImageDialogProps[]>(DUMMY_IMAGES);
-  const [selectedProject, setSelectedProject] = useState<ImageDialogProps | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState("korea");
+  const [sortBy, setSortBy] = useState("latest");
+  const [projects, setProjects] = useState<ImageDialogProps[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const [banners, setBanners] = useState<number[]>([1, 2, 3, 4, 5, 6]);
+  const [selectedProject, setSelectedProject] = useState<ImageDialogProps | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const observerTarget = useRef(null);
 
   // Auth 상태 확인
   useEffect(() => {
@@ -146,128 +56,189 @@ export default function Home() {
     };
   }, []);
 
-  // API에서 프로젝트 불러오기
-  useEffect(() => {
-    const loadProjects = async () => {
-      try {
-        const response = await fetch('/api/projects');
-        const data = await response.json();
-        
-        if (response.ok && data.projects) {
-          // API 데이터를 기존 형식에 맞게 변환
-          const formattedProjects = data.projects.map((project: any) => ({
-            id: project.project_id.toString(),
-            title: project.title,
-            urls: {
-              full: project.thumbnail_url || '/placeholder.jpg',
-              regular: project.thumbnail_url || '/placeholder.jpg',
-            },
-            user: {
-              username: project.User?.nickname || 'Unknown',
-              profile_image: {
-                small: project.User?.profile_image_url || '/globe.svg',
-                large: project.User?.profile_image_url || '/globe.svg',
-              },
-            },
-            likes: 0, // 좋아요 수는 별도 API로 조회 필요
-            views: project.views || 0,
-            description: project.content_text,
-            alt_description: project.title,
-            created_at: project.created_at,
-            width: 400,
-            height: 300,
-            category: project.Category?.name || 'korea',
-          }));
-
-          // DUMMY_IMAGES와 합쳐서 표시
-          setProjects([...formattedProjects, ...DUMMY_IMAGES]);
-        } else {
-          // API 실패 시 더미 데이터만 표시
-          setProjects(DUMMY_IMAGES);
-        }
-      } catch (error) {
-        console.error('프로젝트 로딩 실패:', error);
-        // 에러 시 더미 데이터만 표시
-        setProjects(DUMMY_IMAGES);
-      }
-    };
-
-    loadProjects();
-  }, []);
-
-  // 배너 불러오기
-  useEffect(() => {
-    const savedBanners = localStorage.getItem("banners");
-    if (savedBanners) {
-      const parsedBanners = JSON.parse(savedBanners);
-      setBanners(parsedBanners.map((_: any, idx: number) => idx + 1));
+  // 프로젝트 정렬 함수
+  const sortProjects = useCallback((projectList: ImageDialogProps[], sortType: string) => {
+    const sorted = [...projectList];
+    switch (sortType) {
+      case 'latest':
+        return sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      case 'popular':
+      case 'views':
+        return sorted.sort((a, b) => (b.views || 0) - (a.views || 0));
+      case 'likes':
+        return sorted.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+      default:
+        return sorted;
     }
   }, []);
 
-  // StickyMenu에서 호출할 카테고리 변경 핸들러 함수
-  const handleSetCategory = (categoryValue: string) => {
-    setCurrentCategory(categoryValue);
-    console.log("카테고리 변경:", categoryValue);
-  };
+  // 프로젝트 로딩
+  const loadProjects = useCallback(async (pageNum: number, reset: boolean = false) => {
+    if (loading) return;
+    setLoading(true);
 
-  // 카드 클릭 핸들러
-  const handleCardClick = (project: ImageDialogProps) => {
-    // 상세 페이지 대신 모달 오픈
+    try {
+      const response = await fetch(`/api/projects?page=${pageNum}&limit=20`);
+      const data = await response.json();
+
+      if (response.ok && data.projects && data.projects.length > 0) {
+        // 각 프로젝트의 작성자 정보를 병렬로 가져오기
+        const projectsWithUsers = await Promise.all(
+          data.projects.map(async (project: any) => {
+            let userInfo = {
+              username: 'Unknown',
+              profile_image_url: '/globe.svg',
+            };
+
+            if (project.user_id) {
+              userInfo = await getUserInfo(project.user_id);
+            }
+
+            return {
+              id: project.project_id.toString(),
+              title: project.title,
+              urls: {
+                full: project.thumbnail_url || '/placeholder.jpg',
+                regular: project.thumbnail_url || '/placeholder.jpg',
+              },
+              user: {
+                username: userInfo.username,
+                profile_image: {
+                  small: userInfo.profile_image_url,
+                  large: userInfo.profile_image_url,
+                },
+              },
+              likes: 0,
+              views: project.views || 0,
+              description: project.content_text,
+              alt_description: project.title,
+              created_at: project.created_at,
+              width: 400,
+              height: 300,
+              category: project.Category?.name || 'korea',
+              userId: project.user_id,
+            };
+          })
+        );
+
+        if (reset) {
+          setProjects(projectsWithUsers);
+        } else {
+          setProjects(prev => [...prev, ...projectsWithUsers]);
+        }
+
+        setHasMore(data.projects.length === 20);
+      } else {
+        setHasMore(false);
+      }
+    } catch (error) {
+      console.error('프로젝트 로딩 실패:', error);
+      setHasMore(false);
+    } finally {
+      setLoading(false);
+    }
+  }, [loading]);
+
+  // 초기 로드
+  useEffect(() => {
+    loadProjects(1, true);
+  }, []);
+
+  // 무한 스크롤
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !loading) {
+          const nextPage = page + 1;
+          setPage(nextPage);
+          loadProjects(nextPage);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current);
+      }
+    };
+  }, [hasMore, loading, page, loadProjects]);
+
+  // 카테고리 필터링
+  const filteredProjects = selectedCategory === "korea" || selectedCategory === "all"
+    ? projects
+    : projects.filter(project => project.category === selectedCategory);
+
+  // 정렬 적용
+  const sortedProjects = sortProjects(filteredProjects, sortBy);
+
+  // 프로젝트 클릭 핸들러
+  const handleProjectClick = (project: ImageDialogProps) => {
     setSelectedProject(project);
     setModalOpen(true);
   };
 
-  // 프로젝트 등록 핸들러 (로그인 체크)
-  const handleProjectUpload = () => {
-    const savedProfile = localStorage.getItem("userProfile");
-    if (savedProfile) {
-      const profile = JSON.parse(savedProfile);
-      if (profile.username) {
-        window.location.href = "/project/upload";
-      } else {
-        alert("프로젝트를 등록하려면 먼저 프로필을 설정해주세요.");
-        window.location.href = "/mypage/profile";
-      }
+  // 프로젝트 업로드 핸들러
+  const handleUploadClick = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      alert('프로젝트 등록을 위해 로그인이 필요합니다.');
+      router.push('/login');
     } else {
-      alert("프로젝트를 등록하려면 먼저 로그인해주세요.");
-      window.location.href = "/login";
+      router.push('/project/upload');
     }
   };
 
-  // 현재 선택된 카테고리에 따라 이미지를 필터링합니다.
-  const filteredImages = projects.filter(
-    (image) => currentCategory === "korea" || image.category === currentCategory
-  );
-
   return (
-    <div className="w-full relative bg-gray-50">
-      <main className="w-full flex flex-col items-center">
-        {/* 1. 메인 배너 - 풀페이지 */}
-        <div className="w-full px-0 py-3 bg-white">
-          <MainBanner loading={false} gallery={banners} />
-        </div>
+    <div className="min-h-screen bg-white">
+      <main className="w-full">
+        {/* 1. 메인 배너 */}
+        <section className="w-full">
+          <MainBanner />
+        </section>
 
-        {/* 2. Sticky Menu - TopHeader + Header 아래 고정 */}
-        <div className="w-full bg-white border-b border-gray-200 sticky top-[124px] md:top-[124px] z-30">
-          <div className="max-w-[88%] mx-auto px-6">
-            <StickyMenu
-              props={currentCategory}
-              onSetCategory={handleSetCategory}
-            />
-          </div>
-        </div>
+        {/* 2. Sticky 카테고리 메뉴 */}
+        <StickyMenu
+          props={selectedCategory}
+          onSetCategory={setSelectedCategory}
+          onSetSort={setSortBy}
+          currentSort={sortBy}
+        />
 
-        {/* 3. 프로젝트 그리드 - Masonry 레이아웃 */}
-        <section className="w-full max-w-[88%] px-6 mt-4">
+        {/* 3. 프로젝트 그리드 */}
+        <section className="w-full px-4 md:px-20 py-12">
           <div className="masonry-grid">
-            {filteredImages.map((image, index) => (
-              <ImageCard 
-                key={index} 
-                props={image} 
-                onClick={() => handleCardClick(image)}
+            {sortedProjects.map((project) => (
+              <ImageCard
+                key={project.id}
+                props={project}
+                onClick={() => handleProjectClick(project)}
               />
             ))}
           </div>
+
+          {/* 무한 스크롤 트리거 */}
+          {hasMore && (
+            <div ref={observerTarget} className="h-20 flex items-center justify-center">
+              {loading && (
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4ACAD4]"></div>
+              )}
+            </div>
+          )}
+
+          {/* 프로젝트가 없을 때 */}
+          {!loading && sortedProjects.length === 0 && (
+            <div className="text-center py-20">
+              <p className="text-gray-500 text-lg mb-4">프로젝트가 없습니다.</p>
+              <Button onClick={handleUploadClick} className="bg-[#4ACAD4] hover:bg-[#3db8c0]">
+                첫 프로젝트 등록하기
+              </Button>
+            </div>
+          )}
         </section>
 
         {/* 프로젝트 상세 모달 */}
@@ -277,60 +248,58 @@ export default function Home() {
           project={selectedProject}
         />
 
-        {/* 5. 회원가입 및 로그인 유도 영역 */}
+        {/* 4. 회원가입 및 로그인 유도 영역 */}
         {!isLoggedIn && (
-          <div className="w-full max-w-[88%] px-6 py-20">
-            <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-              <h2 className="text-2xl font-bold text-primary mb-4">
-                당신의 작품을 공유하세요
+          <section className="w-full bg-gradient-to-r from-[#4ACAD4] to-[#3db8c0] py-16 px-4 md:px-20">
+            <div className="max-w-4xl mx-auto text-center text-white">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                크리에이터와 함께하세요
               </h2>
-              <p className="text-secondary mb-8">
-                바이브폴리오에서 포트폴리오를 만들고 전 세계와 연결되세요
+              <p className="text-lg md:text-xl mb-8 opacity-90">
+                프로젝트를 공유하고, 영감을 받고, 함께 성장하세요
               </p>
-              <div className="flex items-center justify-center gap-4">
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/signup">
                   <Button
-                    variant={"default"}
-                    className="btn-primary"
+                    size="lg"
+                    className="bg-white text-[#4ACAD4] hover:bg-gray-100 font-semibold px-8"
                   >
                     회원가입
                   </Button>
                 </Link>
                 <Link href="/login">
                   <Button
-                    variant={"outline"}
-                    className="btn-secondary"
+                    size="lg"
+                    variant="outline"
+                    className="border-2 border-white text-white hover:bg-white/10 font-semibold px-8"
                   >
                     로그인
                   </Button>
                 </Link>
               </div>
             </div>
-          </div>
+          </section>
         )}
-      </main>
 
-      {/* 플로팅 프로젝트 등록 버튼 - 비핸스 스타일 */}
-      <button
-        onClick={handleProjectUpload}
-        className="fixed bottom-4 right-4 md:bottom-8 md:right-8 z-50 flex items-center justify-center gap-2 w-14 h-14 md:w-auto md:h-auto md:px-6 md:py-4 bg-black hover:bg-gray-800 text-white rounded-full md:rounded-lg shadow-card hover:shadow-hover transition-all duration-300"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M12 5v14" />
-          <path d="M5 12h14" />
-        </svg>
-        <span className="hidden md:inline font-semibold">프로젝트 등록</span>
-      </button>
+        {/* 5. 프로젝트 업로드 CTA */}
+        <section className="w-full py-16 px-4 md:px-20 bg-gray-50">
+          <div className="max-w-4xl mx-auto text-center">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
+              당신의 작품을 공유하세요
+            </h2>
+            <p className="text-lg text-gray-600 mb-8">
+              전 세계 크리에이터들과 당신의 프로젝트를 공유하고 피드백을 받아보세요
+            </p>
+            <Button
+              onClick={handleUploadClick}
+              size="lg"
+              className="bg-[#4ACAD4] hover:bg-[#3db8c0] font-semibold px-8"
+            >
+              프로젝트 등록하기
+            </Button>
+          </div>
+        </section>
+      </main>
     </div>
   );
 }
