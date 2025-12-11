@@ -51,28 +51,63 @@ export default function ProfileSettingsPage() {
   // 프로필 불러오기
   useEffect(() => {
     const loadProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        alert('로그인이 필요합니다.');
-        window.location.href = '/login';
-        return;
-      }
-
-      setUserId(user.id);
-
       try {
-        const response = await fetch(`/api/users/${user.id}`);
-        const data = await response.json();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        if (authError || !user) {
+          console.error('인증 오류:', authError);
+          alert('로그인이 필요합니다.');
+          window.location.href = '/login';
+          return;
+        }
 
-        if (response.ok && data.user) {
+        setUserId(user.id);
+        
+        // Auth에서 이메일 가져오기
+        const userEmail = user.email || '';
+        const defaultUsername = user.user_metadata?.nickname || userEmail.split('@')[0] || '';
+
+        try {
+          const response = await fetch(`/api/users/${user.id}`);
+          const data = await response.json();
+
+          if (response.ok && data.user) {
+            setProfile({
+              username: data.user.nickname || defaultUsername,
+              email: userEmail,
+              phone: '',
+              bio: data.user.bio || '',
+              location: '',
+              website: '',
+              profileImage: data.user.profile_image_url || '/globe.svg',
+              skills: [],
+              socialLinks: {},
+            });
+          } else {
+            // API 실패 시 기본값 사용
+            setProfile({
+              username: defaultUsername,
+              email: userEmail,
+              phone: '',
+              bio: '',
+              location: '',
+              website: '',
+              profileImage: '/globe.svg',
+              skills: [],
+              socialLinks: {},
+            });
+          }
+        } catch (error) {
+          console.error('프로필 API 호출 실패:', error);
+          // API 실패 시에도 기본 프로필 표시
           setProfile({
-            username: data.user.nickname || '',
-            email: data.user.email || '',
+            username: defaultUsername,
+            email: userEmail,
             phone: '',
-            bio: data.user.bio || '',
+            bio: '',
             location: '',
             website: '',
-            profileImage: data.user.profile_image_url || '/globe.svg',
+            profileImage: '/globe.svg',
             skills: [],
             socialLinks: {},
           });
@@ -94,7 +129,16 @@ export default function ProfileSettingsPage() {
 
   // 프로필 저장
   const handleSave = async () => {
-    if (!userId) return;
+    if (!userId) {
+      alert('로그인 정보가 없습니다.');
+      return;
+    }
+
+    // 유효성 검사
+    if (!profile.username || profile.username.trim() === '') {
+      alert('사용자 이름을 입력해주세요.');
+      return;
+    }
 
     try {
       let imageUrl = profile.profileImage;
