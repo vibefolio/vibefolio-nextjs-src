@@ -10,6 +10,7 @@ import { StickyMenu } from "@/components/StickyMenu";
 import { ProjectDetailModalV2 } from "@/components/ProjectDetailModalV2";
 import { supabase } from "@/lib/supabase/client";
 import { getUserInfo } from "@/lib/getUserInfo";
+import { getCategoryName } from "@/lib/categoryMap";
 
 interface ImageDialogProps {
   id: string;
@@ -168,10 +169,11 @@ export default function Home() {
     };
   }, [hasMore, loading, page, loadProjects]);
 
-  // 카테고리 필터링
-  const filteredProjects = selectedCategory === "korea" || selectedCategory === "all"
+  // 카테고리 필터링 (DB 이름 기반)
+  const categoryName = getCategoryName(selectedCategory);
+  const filteredProjects = categoryName === "전체"
     ? projects
-    : projects.filter(project => project.category === selectedCategory);
+    : projects.filter(project => project.category === categoryName);
 
   // 정렬 적용
   const sortedProjects = sortProjects(filteredProjects, sortBy);
