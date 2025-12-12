@@ -63,35 +63,37 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Supabase Auth에서 사용자 정보 가져오기
+    // Supabase Admin을 직접 사용하여 사용자 정보 가져오기 (순환 참조 방지)
     if (data && data.length > 0) {
       const userIds: string[] = [...new Set(data.map((p: any) => p.user_id).filter(Boolean))];
       
       if (userIds.length > 0) {
-        // 각 사용자 정보를 Auth에서 가져오기
-        const userPromises = userIds.map(async (uid: string): Promise<[string, any]> => {
+        // 병렬로 모든 사용자 정보 가져오기
+        const userPromises = userIds.map(async (uid: string) => {
           try {
-            const response = await fetch(`${request.nextUrl.origin}/api/users/${uid}`);
-            if (response.ok) {
-              const userData = await response.json();
-              return [uid, userData.user];
+            const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(uid);
+            if (!authError && authData.user) {
+              return {
+                user_id: authData.user.id,
+                username: authData.user.user_metadata?.nickname || authData.user.email?.split('@')[0] || 'Unknown',
+                profile_image_url: authData.user.user_metadata?.profile_image_url || '/globe.svg'
+              };
             }
           } catch (e) {
             console.error(`사용자 ${uid} 정보 조회 실패:`, e);
           }
-          return [uid, null];
+          return null;
         });
 
-        const userResults = await Promise.all(userPromises);
-        const userMap = new Map<string, any>(userResults.filter(([_, user]) => user !== null));
+        const users = await Promise.all(userPromises);
+        const userMap = new Map(
+          users
+            .filter((u): u is NonNullable<typeof u> => u !== null)
+            .map(u => [u.user_id, u])
+        );
 
         data.forEach((project: any) => {
-          const user = userMap.get(project.user_id);
-          project.User = user ? {
-            user_id: user.id || '',
-            username: user.nickname || 'Unknown',
-            profile_image_url: user.profile_image_url || '/globe.svg'
-          } : null;
+          project.User = userMap.get(project.user_id) || null;
         });
       }
     }

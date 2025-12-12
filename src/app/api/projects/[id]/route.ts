@@ -2,7 +2,7 @@
 // 개별 프로젝트 조회, 수정, 삭제 API
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase/client';
+import { supabase, supabaseAdmin } from '@/lib/supabase/client';
 
 export async function GET(
   request: NextRequest,
@@ -31,16 +31,15 @@ export async function GET(
       );
     }
 
-    // Supabase Auth에서 사용자 정보 가져오기
+    // Supabase Admin을 직접 사용하여 사용자 정보 가져오기
     if (data && data.user_id) {
       try {
-        const userResponse = await fetch(`${request.nextUrl.origin}/api/users/${data.user_id}`);
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(data.user_id);
+        if (!authError && authData.user) {
           data.User = {
-            user_id: userData.user.id,
-            username: userData.user.nickname,
-            profile_image_url: userData.user.profile_image_url
+            user_id: authData.user.id,
+            username: authData.user.user_metadata?.nickname || authData.user.email?.split('@')[0] || 'Unknown',
+            profile_image_url: authData.user.user_metadata?.profile_image_url || '/globe.svg'
           };
         }
       } catch (e) {
@@ -102,16 +101,15 @@ export async function PUT(
       );
     }
 
-    // Supabase Auth에서 사용자 정보 가져오기
+    // Supabase Admin을 직접 사용하여 사용자 정보 가져오기
     if (data && data.user_id) {
       try {
-        const userResponse = await fetch(`${request.nextUrl.origin}/api/users/${data.user_id}`);
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(data.user_id);
+        if (!authError && authData.user) {
           data.User = {
-            user_id: userData.user.id,
-            username: userData.user.nickname,
-            profile_image_url: userData.user.profile_image_url
+            user_id: authData.user.id,
+            username: authData.user.user_metadata?.nickname || authData.user.email?.split('@')[0] || 'Unknown',
+            profile_image_url: authData.user.user_metadata?.profile_image_url || '/globe.svg'
           };
         }
       } catch (e) {
@@ -136,18 +134,29 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
-    // 현재 사용자 확인
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
+    // Authorization 헤더에서 토큰 추출
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
       return NextResponse.json(
         { error: '로그인이 필요합니다.' },
         { status: 401 }
       );
     }
 
+    const token = authHeader.replace('Bearer ', '');
+    
+    // 토큰으로 사용자 확인
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: '인증에 실패했습니다.' },
+        { status: 401 }
+      );
+    }
+
     // 프로젝트 소유자 확인
-    const { data: project, error: fetchError } = await (supabase as any)
+    const { data: project, error: fetchError } = await (supabaseAdmin as any)
       .from('Project')
       .select('user_id')
       .eq('project_id', id)
@@ -168,7 +177,7 @@ export async function DELETE(
     }
 
     // Soft delete: is_deleted = true로 변경
-    const { error } = await (supabase as any)
+    const { error } = await (supabaseAdmin as any)
       .from('Project')
       .update({ is_deleted: true })
       .eq('project_id', id);
