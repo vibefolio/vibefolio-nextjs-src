@@ -19,14 +19,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabaseAdmin
       .from('Comment')
-      .select(`
-        *,
-        users (
-          id,
-          nickname,
-          profile_image_url
-        )
-      `)
+      .select('*')
       .eq('project_id', projectId)
       .eq('is_deleted', false)
       .order('created_at', { ascending: false });
@@ -37,6 +30,45 @@ export async function GET(request: NextRequest) {
         { error: '댓글 조회에 실패했습니다.' },
         { status: 500 }
       );
+    }
+
+    // Auth에서 사용자 정보 가져오기
+    if (data && data.length > 0) {
+      const userIds = [...new Set(data.map((c: any) => c.user_id).filter(Boolean))];
+      
+      const userPromises = userIds.map(async (uid: string) => {
+        try {
+          const { data: authData } = await supabaseAdmin.auth.admin.getUserById(uid);
+          if (authData.user) {
+            return {
+              user_id: authData.user.id,
+              nickname: authData.user.user_metadata?.nickname || authData.user.email?.split('@')[0] || 'Unknown',
+              profile_image_url: authData.user.user_metadata?.profile_image_url || '/globe.svg'
+            };
+          }
+        } catch (e) {
+          console.error(`사용자 ${uid} 정보 조회 실패:`, e);
+        }
+        return null;
+      });
+
+      const users = await Promise.all(userPromises);
+      const userMap = new Map(
+        users
+          .filter((u): u is NonNullable<typeof u> => u !== null)
+          .map(u => [u.user_id, u])
+      );
+
+      data.forEach((comment: any) => {
+        const user = userMap.get(comment.user_id);
+        comment.user = user ? {
+          nickname: user.nickname,
+          profile_image_url: user.profile_image_url
+        } : {
+          nickname: 'Unknown',
+          profile_image_url: '/globe.svg'
+        };
+      });
     }
 
     return NextResponse.json({ comments: data });
@@ -90,14 +122,7 @@ export async function POST(request: NextRequest) {
           content,
         },
       ] as any)
-      .select(`
-        *,
-        users (
-          id,
-          nickname,
-          profile_image_url
-        )
-      `)
+      .select('*')
       .single();
 
     if (error) {
@@ -107,6 +132,12 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // 작성한 사용자 정보 추가
+    data.user = {
+      nickname: user.user_metadata?.nickname || user.email?.split('@')[0] || 'Unknown',
+      profile_image_url: user.user_metadata?.profile_image_url || '/globe.svg'
+    };
 
     return NextResponse.json(
       {

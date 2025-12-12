@@ -233,8 +233,8 @@ export function ProjectDetailModalV2({
       if (res.ok && data.comment) {
         const comment = {
           id: data.comment.comment_id,
-          user: data.comment.users?.nickname || '나',
-          text: data.comment.content,
+          user: data.comment.user,
+          content: data.comment.content,
           created_at: data.comment.created_at,
           userId: currentUserId,
         };
@@ -262,7 +262,7 @@ export function ProjectDetailModalV2({
         onOpenChange(newOpen);
       }}>
         <DialogContent 
-          className="!max-w-none !w-[88vw] !h-[88vh] !p-0 !gap-0 bg-transparent border-none shadow-none overflow-hidden flex items-center justify-center"
+          className="!max-w-none !w-screen !h-screen !p-0 !gap-0 bg-transparent border-none shadow-none overflow-hidden flex items-center justify-center"
           showCloseButton={false}
           onEscapeKeyDown={(e) => {
             e.preventDefault();
@@ -413,14 +413,15 @@ export function ProjectDetailModalV2({
                     comments.map((comment) => (
                       <div key={comment.id} className="flex gap-2">
                         <Avatar className="w-6 h-6 flex-shrink-0 bg-white">
+                          <AvatarImage src={comment.user?.profile_image_url || '/globe.svg'} />
                           <AvatarFallback className="bg-white"><User size={12} /></AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
                           <div className="flex items-center gap-1 mb-0.5">
-                            <span className="font-medium text-[10px]">{comment.user}</span>
+                            <span className="font-medium text-[10px]">{comment.user?.nickname || comment.user || 'Unknown'}</span>
                             <span className="text-[9px] text-gray-400">{dayjs(comment.created_at).fromNow()}</span>
                           </div>
-                          <p className="text-xs text-gray-700">{comment.text}</p>
+                          <p className="text-xs text-gray-700">{comment.content || comment.text}</p>
                         </div>
                       </div>
                     ))
