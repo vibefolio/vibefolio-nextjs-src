@@ -17,7 +17,7 @@ export async function POST(
 
     // 현재 조회수 가져오기 (안전)
     const { data: current, error: fetchError } = await supabase
-      .from<ProjectRow>('Project')
+      .from('Project')
       .select('views')
       .eq('project_id', projectId)
       .single();
