@@ -322,7 +322,7 @@ export default function MyPage() {
             <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
               {activeTab === 'projects' && <Upload className="text-gray-300" />}
               {activeTab === 'likes' && <Heart className="text-gray-300" />}
-              {activeTab === 'bookmarks' && <Bookmark className="text-gray-300" />}
+              {activeTab === 'collections' && <Folder className="text-gray-300" />}
               {activeTab === 'inquiries' && <MessageSquare className="text-gray-300" />}
               {activeTab === 'proposals' && <Send className="text-gray-300" />}
               {activeTab === 'comments' && <MessageCircle className="text-gray-300" />}
