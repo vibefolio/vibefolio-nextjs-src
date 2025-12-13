@@ -175,16 +175,24 @@ export default function CollectionsPage() {
                 {collectionProjects.map((project) => (
                   <ImageCard
                     key={project.project_id}
-                    id={project.project_id.toString()}
-                    imageUrl={project.image_url}
-                    title={project.title}
-                    description={project.description}
-                    user={{
-                      username: project.user?.nickname || 'Unknown',
-                      profile_image: { small: project.user?.profile_image_url || '/globe.svg' }
+                    props={{
+                      id: project.project_id.toString(),
+                      urls: { 
+                        regular: project.image_url, 
+                        full: project.image_url 
+                      },
+                      user: {
+                        username: project.user?.nickname || 'Unknown',
+                        profile_image: { 
+                          large: project.user?.profile_image_url || '/globe.svg',
+                          small: project.user?.profile_image_url || '/globe.svg'
+                        }
+                      },
+                      likes: project.likes_count || 0,
+                      views: project.views_count || 0,
+                      description: project.description,
+                      alt_description: project.title
                     }}
-                    likes={project.likes_count || 0}
-                    views={project.views_count || 0}
                   />
                 ))}
               </div>
