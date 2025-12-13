@@ -73,11 +73,11 @@ export default function CollectionsPage() {
           Project (*)
         `)
         .eq('collection_id', collectionId)
-        .order('added_at', { ascending: false });
+        .order('added_at', { ascending: false }) as any;
 
       if (error) throw error;
 
-      const projects = data?.map(item => ({
+      const projects = data?.map((item: any) => ({
         ...item.Project,
         added_at: item.added_at
       })) || [];
