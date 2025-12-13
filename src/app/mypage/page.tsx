@@ -1,14 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Heart, Bookmark, Upload, Settings, Grid, MessageSquare, Send, MessageCircle } from "lucide-react";
+import { Heart, Folder, Upload, Settings, Grid, MessageSquare, Send, MessageCircle, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ImageCard } from "@/components/ImageCard";
 import { supabase } from "@/lib/supabase/client";
 
 export default function MyPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'projects' | 'likes' | 'bookmarks' | 'inquiries' | 'proposals' | 'comments'>('projects');
+  const [activeTab, setActiveTab] = useState<'projects' | 'likes' | 'collections' | 'inquiries' | 'proposals' | 'comments'>('projects');
   
   // Data States
   const [projects, setProjects] = useState<any[]>([]);
@@ -18,7 +18,9 @@ export default function MyPage() {
   const [stats, setStats] = useState({
     projects: 0,
     likes: 0,
-    bookmarks: 0
+    collections: 0,
+    followers: 0,
+    following: 0
   });
 
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -42,16 +44,20 @@ export default function MyPage() {
       });
 
       // 통계 카운트 가져오기 (Promise.all로 병렬 처리)
-      const [projectsCount, likesCount, bookmarksCount] = await Promise.all([
+      const [projectsCount, likesCount, collectionsCount, followersCount, followingCount] = await Promise.all([
         supabase.from('Project').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
         supabase.from('Like').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
-        supabase.from('Wishlist').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('Collection').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('Follow').select('*', { count: 'exact', head: true }).eq('following_id', user.id),
+        supabase.from('Follow').select('*', { count: 'exact', head: true }).eq('follower_id', user.id),
       ]);
 
       setStats({
         projects: projectsCount.count || 0,
         likes: likesCount.count || 0,
-        bookmarks: bookmarksCount.count || 0
+        collections: collectionsCount.count || 0,
+        followers: followersCount.count || 0,
+        following: followingCount.count || 0
       });
     };
     init();
@@ -224,8 +230,16 @@ export default function MyPage() {
                 <div className="text-sm text-gray-500">Likes</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-gray-900">{stats.bookmarks}</div>
-                <div className="text-sm text-gray-500">Bookmarks</div>
+                <div className="text-2xl font-bold text-gray-900">{stats.collections}</div>
+                <div className="text-sm text-gray-500">Collections</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-gray-900">{stats.followers}</div>
+                <div className="text-sm text-gray-500">Followers</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-gray-900">{stats.following}</div>
+                <div className="text-sm text-gray-500">Following</div>
               </div>
             </div>
           </div>
@@ -258,16 +272,11 @@ export default function MyPage() {
             )}
           </button>
           <button
-            onClick={() => setActiveTab('bookmarks')}
-            className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors relative whitespace-nowrap ${
-              activeTab === 'bookmarks' ? 'text-blue-500' : 'text-gray-500 hover:text-gray-900'
-            }`}
+            onClick={() => router.push('/mypage/collections')}
+            className="flex items-center gap-2 px-6 py-4 font-medium transition-colors relative whitespace-nowrap text-gray-500 hover:text-gray-900"
           >
-            <Bookmark size={18} fill={activeTab === 'bookmarks' ? "currentColor" : "none"} />
-            북마크
-            {activeTab === 'bookmarks' && (
-              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-500" />
-            )}
+            <Folder size={18} />
+            컬렉션
           </button>
           <button
             onClick={() => setActiveTab('inquiries')}
