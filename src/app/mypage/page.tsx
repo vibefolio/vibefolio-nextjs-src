@@ -90,16 +90,6 @@ export default function MyPage() {
             `)
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
-        } else if (activeTab === 'bookmarks') {
-          // 북마크한 프로젝트
-          query = supabase
-            .from('Wishlist')
-            .select(`
-              created_at,
-              Project (*)
-            `)
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false });
         } else if (activeTab === 'inquiries') {
           // 1:1 문의 (받은 문의)
           query = supabase
