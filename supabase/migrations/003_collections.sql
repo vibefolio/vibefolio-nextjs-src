@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS "Collection" (
 CREATE TABLE IF NOT EXISTS "CollectionItem" (
   collection_item_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   collection_id UUID NOT NULL REFERENCES "Collection"(collection_id) ON DELETE CASCADE,
-  project_id UUID NOT NULL REFERENCES "Project"(project_id) ON DELETE CASCADE,
+  project_id INTEGER NOT NULL REFERENCES "Project"(project_id) ON DELETE CASCADE,
   added_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(collection_id, project_id)
 );
