@@ -61,6 +61,7 @@ export default function MyProjectsPage() {
             )
           `, { count: 'exact' })
           .eq('user_id', user.id)
+          .eq('is_deleted', false)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -80,8 +81,8 @@ export default function MyProjectsPage() {
               large: p.users?.profile_image_url || "https://images.unsplash.com/placeholder-avatars/extra-large.jpg?auto=format&fit=crop&w=150&h=150&q=60"
             }
           },
-          likes: p.likes || 0,
-          views: p.views || 0,
+          likes: p.likes_count || p.likes || 0,
+          views: p.views_count || p.views || 0,
           description: p.content_text,
           alt_description: p.title,
           created_at: p.created_at,
