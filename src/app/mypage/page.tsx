@@ -10,7 +10,7 @@ import { supabase } from "@/lib/supabase/client";
 
 export default function MyPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'projects' | 'likes' | 'collections' | 'inquiries' | 'proposals' | 'comments'>('projects');
+  const [activeTab, setActiveTab] = useState<'projects' | 'likes' | 'collections' | 'proposals' | 'comments'>('projects');
   
   // Data States
   const [projects, setProjects] = useState<any[]>([]);
@@ -22,7 +22,8 @@ export default function MyPage() {
     likes: 0,
     collections: 0,
     followers: 0,
-    following: 0
+    following: 0,
+    proposals: 0
   });
 
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -92,19 +93,12 @@ export default function MyPage() {
             `)
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
-        } else if (activeTab === 'inquiries') {
-          // 1:1 문의 (받은 문의)
+        } else if (activeTab === 'proposals') {
+          // 받은 제안
           query = supabase
             .from('Proposal')
             .select('*')
             .eq('receiver_id', userId)
-            .order('created_at', { ascending: false });
-        } else if (activeTab === 'proposals') {
-          // 제안하기 (보낸 제안)
-          query = supabase
-            .from('Proposal')
-            .select('*')
-            .eq('sender_id', userId)
             .order('created_at', { ascending: false });
         } else if (activeTab === 'comments') {
           // 내가 쓴 댓글
@@ -133,8 +127,8 @@ export default function MyPage() {
         // 데이터 매핑
         let mappedData;
 
-        if (activeTab === 'inquiries' || activeTab === 'proposals') {
-          // 제안/문의는 그대로 사용
+        if (activeTab === 'proposals') {
+          // 제안은 그대로 사용
           mappedData = result || [];
         } else if (activeTab === 'comments') {
           // 댓글도 그대로 사용
@@ -335,27 +329,14 @@ export default function MyPage() {
               </div>
             )}
 
-            {/* 1:1 문의 탭 */}
-            {activeTab === 'inquiries' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-20">
-                {projects.map((item: any) => (
-                  <ProposalCard 
-                    key={item.proposal_id} 
-                    proposal={item} 
-                    type="received"
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* 제안하기 탭 */}
+            {/* 받은 제안 탭 */}
             {activeTab === 'proposals' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-20">
                 {projects.map((item: any) => (
                   <ProposalCard 
                     key={item.proposal_id} 
                     proposal={item} 
-                    type="sent"
+                    type="received"
                   />
                 ))}
               </div>
