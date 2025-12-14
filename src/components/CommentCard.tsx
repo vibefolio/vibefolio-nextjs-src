@@ -20,16 +20,20 @@ interface CommentCardProps {
       title: string;
       thumbnail_url: string;
       image_url: string;
+      user_id?: string;
     };
   };
+  onClick?: () => void;
 }
 
-export function CommentCard({ comment }: CommentCardProps) {
+export function CommentCard({ comment, onClick }: CommentCardProps) {
   const router = useRouter();
   const project = comment.Project;
 
   const handleClick = () => {
-    if (project) {
+    if (onClick) {
+      onClick();
+    } else if (project) {
       router.push(`/?project=${project.project_id}`);
     }
   };

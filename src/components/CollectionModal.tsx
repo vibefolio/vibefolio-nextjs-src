@@ -33,6 +33,7 @@ export function CollectionModal({
   const [newCollectionName, setNewCollectionName] = useState("");
   const [showNewForm, setShowNewForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingCollections, setLoadingCollections] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -43,6 +44,7 @@ export function CollectionModal({
   }, [open]);
 
   const loadCollections = async () => {
+    setLoadingCollections(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -59,6 +61,8 @@ export function CollectionModal({
       }
     } catch (error) {
       console.error('컬렉션 로드 실패:', error);
+    } finally {
+      setLoadingCollections(false);
     }
   };
 
@@ -200,7 +204,12 @@ export function CollectionModal({
 
           {/* 기존 컬렉션 목록 */}
           <div className="space-y-2 max-h-[300px] overflow-y-auto">
-            {collections.length > 0 ? (
+            {loadingCollections ? (
+              <div className="text-center py-8">
+                <div className="animate-spin w-6 h-6 border-2 border-[#4ACAD4] border-t-transparent rounded-full mx-auto mb-2"></div>
+                <p className="text-gray-500 text-sm">컬렉션을 불러오는 중...</p>
+              </div>
+            ) : collections.length > 0 ? (
               collections.map((collection) => (
                 <button
                   key={collection.collection_id}

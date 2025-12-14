@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { ImageCard } from "@/components/ImageCard";
 import { ProposalCard } from "@/components/ProposalCard";
 import { CommentCard } from "@/components/CommentCard";
+import { ProjectDetailModalV2 } from "@/components/ProjectDetailModalV2";
+import { ProposalDetailModal } from "@/components/ProposalDetailModal";
 import { supabase } from "@/lib/supabase/client";
 
 export default function MyPage() {
@@ -15,6 +17,10 @@ export default function MyPage() {
   // Data States
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedProposal, setSelectedProposal] = useState<any>(null);
+  const [proposalModalOpen, setProposalModalOpen] = useState(false);
   
   // Stats
   const [stats, setStats] = useState({
@@ -314,7 +320,14 @@ export default function MyPage() {
             {(activeTab === 'projects' || activeTab === 'likes') && projects.length > 0 && (
               <div className="masonry-grid pb-20">
                 {projects.map((project: any) => (
-                  <ImageCard key={project.id} props={project} />
+                  <ImageCard 
+                    key={project.id} 
+                    props={project} 
+                    onClick={() => {
+                      setSelectedProject(project);
+                      setModalOpen(true);
+                    }}
+                  />
                 ))}
               </div>
             )}
@@ -327,6 +340,10 @@ export default function MyPage() {
                     key={item.proposal_id} 
                     proposal={item} 
                     type="received"
+                    onClick={() => {
+                      setSelectedProposal(item);
+                      setProposalModalOpen(true);
+                    }}
                   />
                 ))}
               </div>
@@ -339,6 +356,36 @@ export default function MyPage() {
                   <CommentCard 
                     key={item.comment_id} 
                     comment={item}
+                    onClick={async () => {
+                      // 프로젝트 상세 정보 가져와서 모달 열기
+                      if (item.Project) {
+                        const projectData = {
+                          id: item.Project.project_id?.toString(),
+                          title: item.Project.title,
+                          urls: {
+                            full: item.Project.thumbnail_url || '/placeholder.jpg',
+                            regular: item.Project.thumbnail_url || '/placeholder.jpg'
+                          },
+                          user: {
+                            username: userProfile?.nickname || 'Unknown',
+                            profile_image: {
+                              small: userProfile?.profile_image_url || '/globe.svg',
+                              large: userProfile?.profile_image_url || '/globe.svg'
+                            }
+                          },
+                          likes: 0,
+                          views: 0,
+                          description: item.Project.title,
+                          alt_description: item.Project.title,
+                          created_at: new Date().toISOString(),
+                          width: 800,
+                          height: 600,
+                          userId: item.Project.user_id
+                        };
+                        setSelectedProject(projectData);
+                        setModalOpen(true);
+                      }
+                    }}
                   />
                 ))}
               </div>
@@ -377,6 +424,20 @@ export default function MyPage() {
           </>
         )}
       </div>
+
+      {/* 프로젝트 상세 모달 */}
+      <ProjectDetailModalV2
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        project={selectedProject}
+      />
+
+      {/* 제안 상세 모달 */}
+      <ProposalDetailModal
+        open={proposalModalOpen}
+        onOpenChange={setProposalModalOpen}
+        proposal={selectedProposal}
+      />
     </div>
   );
 }
