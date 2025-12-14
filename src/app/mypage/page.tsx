@@ -277,25 +277,13 @@ export default function MyPage() {
             컬렉션
           </button>
           <button
-            onClick={() => setActiveTab('inquiries')}
-            className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors relative whitespace-nowrap ${
-              activeTab === 'inquiries' ? 'text-purple-500' : 'text-gray-500 hover:text-gray-900'
-            }`}
-          >
-            <MessageSquare size={18} />
-            1:1 문의
-            {activeTab === 'inquiries' && (
-              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-purple-500" />
-            )}
-          </button>
-          <button
             onClick={() => setActiveTab('proposals')}
             className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors relative whitespace-nowrap ${
               activeTab === 'proposals' ? 'text-green-500' : 'text-gray-500 hover:text-gray-900'
             }`}
           >
             <Send size={18} />
-            제안하기
+            받은 제안
             {activeTab === 'proposals' && (
               <div className="absolute bottom-0 left-0 w-full h-0.5 bg-green-500" />
             )}
