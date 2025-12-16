@@ -14,12 +14,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faUpload, faTableCellsLarge, faUser, faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
+import { faUpload, faTableCellsLarge, faUser, faRightFromBracket, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 
 export function AuthButtons() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -32,11 +33,20 @@ export function AuthButtons() {
           nickname: session.user.user_metadata?.nickname || session.user.email?.split('@')[0] || '사용자',
           profile_image_url: session.user.user_metadata?.profile_image_url || '/globe.svg',
         });
+
+        // 관리자 여부 확인
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+        
+        setIsAdmin((userData as any)?.role === 'admin');
       }
     };
     checkUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null);
       
       if (session?.user) {
@@ -44,8 +54,18 @@ export function AuthButtons() {
           nickname: session.user.user_metadata?.nickname || session.user.email?.split('@')[0] || '사용자',
           profile_image_url: session.user.user_metadata?.profile_image_url || '/globe.svg',
         });
+
+        // 관리자 여부 확인
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+        
+        setIsAdmin((userData as any)?.role === 'admin');
       } else {
         setUserProfile(null);
+        setIsAdmin(false);
       }
     });
 
@@ -92,6 +112,15 @@ export function AuthButtons() {
             <FontAwesomeIcon icon={faUser} className="mr-2 h-4 w-4" />
             마이페이지
           </DropdownMenuItem>
+          {isAdmin && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => router.push('/admin')} className="cursor-pointer text-indigo-600">
+                <FontAwesomeIcon icon={faShieldHalved} className="mr-2 h-4 w-4" />
+                관리자 페이지
+              </DropdownMenuItem>
+            </>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600">
             <FontAwesomeIcon icon={faRightFromBracket} className="mr-2 h-4 w-4" />
