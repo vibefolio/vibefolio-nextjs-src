@@ -138,6 +138,7 @@ export function ProjectDetailModalV2({
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState("");
   const [replyingTo, setReplyingTo] = useState<{ id: string; nickname: string } | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
   const [viewsCount, setViewsCount] = useState(0);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -467,8 +468,9 @@ export function ProjectDetailModalV2({
               <img
                 src={project.urls.full}
                 alt={project.alt_description || "Project Image"}
-                className="w-auto max-w-full h-auto object-contain"
+                className="w-auto max-w-full h-auto object-contain cursor-zoom-in"
                 style={{ maxWidth: project.width || '100%' }}
+                onClick={() => setLightboxOpen(true)}
               />
               
               {/* 액션 아이콘들 - 이미지 아래 */}
@@ -604,8 +606,9 @@ export function ProjectDetailModalV2({
                 <img
                   src={project.urls.full}
                   alt={project.alt_description || "Project Image"}
-                  className="max-w-full h-auto object-contain object-top"
+                  className="max-w-full h-auto object-contain object-top cursor-zoom-in"
                   style={{ maxWidth: Math.min(project.width || 1200, 1200) }}
+                  onClick={() => setLightboxOpen(true)}
                 />
               </div>
             </div>
@@ -823,6 +826,37 @@ export function ProjectDetailModalV2({
         open={loginModalOpen}
         onOpenChange={setLoginModalOpen}
       />
+
+      {/* 이미지 라이트박스 */}
+      <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
+        <DialogContent 
+          className="!max-w-none !w-screen !h-screen !p-0 !m-0 !gap-0 bg-black/95 border-none shadow-none flex flex-col items-center justify-center outline-none z-[60]"
+          showCloseButton={false}
+        >
+          {/* 닫기 버튼 */}
+          <button 
+            onClick={() => setLightboxOpen(false)}
+            className="absolute top-6 right-6 z-50 w-12 h-12 rounded-full bg-black/50 hover:bg-black/80 flex items-center justify-center text-white transition-colors"
+          >
+            <FontAwesomeIcon icon={faXmark} className="w-6 h-6" />
+          </button>
+
+          {/* 이미지 영역 */}
+          <div className="w-full h-full flex items-center justify-center p-4 md:p-10 select-none">
+            <img
+              src={project.urls.full}
+              alt={project.alt_description || "Detail View"}
+              className="max-w-full max-h-full object-contain shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+          
+          {/* 하단 정보 (선택사항) */}
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/80 text-sm font-medium bg-black/40 px-4 py-2 rounded-full">
+            1 / 1
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
