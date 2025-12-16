@@ -557,7 +557,7 @@ export function ProjectDetailModalV2({
           </div>
 
           {/* 데스크톱 뷰 - 기존 스타일 유지 */}
-          <div className="hidden md:flex flex-row-reverse h-full items-end justify-center gap-4">
+          <div className="hidden md:flex h-full items-end justify-center gap-4">
             {/* 메인 이미지 영역 */}
             <div className="w-[66vw] h-full bg-white flex flex-col relative rounded-t-xl overflow-hidden shadow-2xl">
               {/* X 버튼 */}
@@ -591,13 +591,15 @@ export function ProjectDetailModalV2({
               </div>
               
               {/* 이미지 */}
-              <div className="flex-1 flex items-start justify-center p-8 overflow-y-auto">
-                <img
-                  src={project.urls.full}
-                  alt={project.alt_description || "Project Image"}
-                  className="max-w-full h-auto object-contain object-top"
-                  style={{ maxWidth: Math.min(project.width || 1200, 1200) }}
-                />
+              <div className="flex-1 overflow-y-auto" style={{ direction: 'rtl' }}>
+                <div className="flex items-start justify-center p-8" style={{ direction: 'ltr' }}>
+                  <img
+                    src={project.urls.full}
+                    alt={project.alt_description || "Project Image"}
+                    className="max-w-full h-auto object-contain object-top"
+                    style={{ maxWidth: Math.min(project.width || 1200, 1200) }}
+                  />
+                </div>
               </div>
             </div>
 
