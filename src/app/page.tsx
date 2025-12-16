@@ -11,6 +11,8 @@ import { StickyMenu } from "@/components/StickyMenu";
 import { ProjectDetailModalV2 } from "@/components/ProjectDetailModalV2";
 import { supabase } from "@/lib/supabase/client";
 import { getCategoryName } from "@/lib/categoryMap";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSparkles, faXmark } from "@fortawesome/free-solid-svg-icons";
 
 interface ImageDialogProps {
   id: string;
@@ -30,8 +32,9 @@ interface ImageDialogProps {
 
 export default function Home() {
   const router = useRouter();
-  const [selectedCategory, setSelectedCategory] = useState("korea");
+  const [selectedCategory, setSelectedCategory] = useState<string | string[]>("all");
   const [sortBy, setSortBy] = useState("latest");
+  const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [projects, setProjects] = useState<ImageDialogProps[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -40,17 +43,46 @@ export default function Home() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ImageDialogProps | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userInterests, setUserInterests] = useState<{ genres: string[]; fields: string[] } | null>(null);
+  const [usePersonalized, setUsePersonalized] = useState(false);
 
-  // Auth 상태 확인
+  // Auth 상태 확인 및 관심 카테고리 로드
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setIsLoggedIn(!!session);
+      
+      if (session?.user) {
+        const interests = session.user.user_metadata?.interests;
+        if (interests && (interests.genres?.length > 0 || interests.fields?.length > 0)) {
+          setUserInterests(interests);
+          // 관심 장르가 있으면 자동으로 해당 장르로 필터링
+          if (interests.genres?.length > 0) {
+            setSelectedCategory(interests.genres);
+            setUsePersonalized(true);
+          }
+          if (interests.fields?.length > 0) {
+            setSelectedFields(interests.fields);
+          }
+        }
+      }
     };
     checkUser();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setIsLoggedIn(!!session);
+      
+      if (session?.user) {
+        const interests = session.user.user_metadata?.interests;
+        if (interests && (interests.genres?.length > 0 || interests.fields?.length > 0)) {
+          setUserInterests(interests);
+        }
+      } else {
+        setUserInterests(null);
+        setUsePersonalized(false);
+      }
     });
+    
     return () => subscription.unsubscribe();
   }, []);
 
@@ -135,8 +167,14 @@ export default function Home() {
   }, []);
 
   // 카테고리 필터링
-  const categoryName = getCategoryName(selectedCategory);
-  const filtered = categoryName === "전체" ? projects : projects.filter(p => p.category === categoryName);
+  const categoryNames = Array.isArray(selectedCategory) 
+    ? selectedCategory.map(c => getCategoryName(c))
+    : [getCategoryName(selectedCategory)];
+  
+  const filtered = categoryNames.includes("전체") || selectedCategory === "all"
+    ? projects 
+    : projects.filter(p => categoryNames.includes(p.category));
+  
   const sortedProjects = sortProjects(filtered, sortBy);
 
   const handleProjectClick = (proj: ImageDialogProps) => {
@@ -150,6 +188,12 @@ export default function Home() {
     else { router.push('/project/upload'); }
   };
 
+  const handleClearPersonalized = () => {
+    setUsePersonalized(false);
+    setSelectedCategory("all");
+    setSelectedFields([]);
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <main className="w-full">
@@ -158,12 +202,40 @@ export default function Home() {
           <MainBanner loading={loading} gallery={[]} />
         </section>
 
+        {/* 개인화 필터 알림 */}
+        {usePersonalized && userInterests && (
+          <div className="bg-gradient-to-r from-[#4ACAD4]/10 to-indigo-50 border-b border-[#4ACAD4]/20">
+            <div className="max-w-screen-xl mx-auto px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FontAwesomeIcon icon={faSparkles} className="w-4 h-4 text-[#4ACAD4]" />
+                <span className="text-sm text-gray-700">
+                  <span className="font-medium text-[#4ACAD4]">맞춤 피드</span>
+                  {userInterests.genres?.length > 0 && (
+                    <span className="ml-1">
+                      관심 장르 기반으로 보여드리고 있어요
+                    </span>
+                  )}
+                </span>
+              </div>
+              <button
+                onClick={handleClearPersonalized}
+                className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <FontAwesomeIcon icon={faXmark} className="w-3 h-3" />
+                전체 보기
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 카테고리 메뉴 */}
         <StickyMenu
           props={selectedCategory}
           onSetCategory={setSelectedCategory}
           onSetSort={setSortBy}
+          onSetField={setSelectedFields}
           currentSort={sortBy}
+          currentFields={selectedFields}
         />
 
         {/* 프로젝트 그리드 */}

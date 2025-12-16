@@ -1,6 +1,8 @@
 // 카테고리 매핑 - StickyMenu value와 DB name 연결
 export const CATEGORY_MAP: Record<string, string> = {
+  // 기존 카테고리
   "korea": "전체",
+  "all": "전체",
   "video": "영상/모션그래픽",
   "graphic-design": "그래픽 디자인",
   "brand": "브랜딩/편집",
@@ -14,10 +16,33 @@ export const CATEGORY_MAP: Record<string, string> = {
   "cartoon": "캐릭터 디자인",
   "product-design": "제품/패키지 디자인",
   "photography": "포토그래피",
-  "photo": "사진",
+  "photo": "포토",
   "typography": "타이포그래피",
   "craft": "공예",
   "art": "파인아트",
+  
+  // 새로운 장르 카테고리
+  "animation": "애니메이션",
+  "graphic": "그래픽",
+  "design": "디자인",
+  "cinema": "영화·드라마",
+  "audio": "오디오",
+  "text": "텍스트",
+  "code": "코드",
+  "webapp": "웹/앱",
+  "game": "게임",
+  
+  // 산업 분야 카테고리
+  "finance": "경제/금융",
+  "healthcare": "헬스케어",
+  "beauty": "뷰티/패션",
+  "pet": "반려",
+  "fnb": "F&B",
+  "travel": "여행/레저",
+  "education": "교육",
+  "it": "IT",
+  "lifestyle": "라이프스타일",
+  "business": "비즈니스",
 };
 
 // 역매핑 - DB name에서 value로
@@ -32,5 +57,25 @@ export function getCategoryName(value: string): string {
 
 // DB name을 value로 변환
 export function getCategoryValue(name: string): string {
-  return CATEGORY_REVERSE_MAP[name] || "korea";
+  return CATEGORY_REVERSE_MAP[name] || "all";
+}
+
+// 관심 장르에 해당하는 프로젝트 필터링
+export function filterByInterests(
+  projects: any[],
+  genres: string[],
+  fields: string[]
+): any[] {
+  if (genres.length === 0 && fields.length === 0) {
+    return projects;
+  }
+  
+  const genreNames = genres.map(g => getCategoryName(g));
+  const fieldNames = fields.map(f => getCategoryName(f));
+  
+  return projects.filter(p => {
+    const matchGenre = genreNames.length === 0 || genreNames.includes(p.category);
+    // 분야는 별도 필드가 있다면 체크, 없으면 장르만 체크
+    return matchGenre;
+  });
 }
