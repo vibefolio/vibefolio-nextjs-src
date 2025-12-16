@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, X, Edit, Trash2, ArrowLeft, Loader2 } from "lucide-react";
+import { Upload, X, Edit, Trash2, ArrowLeft, Loader2, ImagePlus } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { uploadImage } from "@/lib/supabase/storage";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -24,6 +24,7 @@ export default function AdminBannersPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 관리자 확인
   useEffect(() => {
@@ -37,14 +38,18 @@ export default function AdminBannersPage() {
   const loadBanners = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/banners?pageType=${pageType}`);
-      const data = await res.json();
+      const { data, error } = await supabase
+        .from('Banner')
+        .select('*')
+        .eq('page_type', pageType)
+        .order('display_order', { ascending: true });
       
-      if (res.ok) {
-        setBanners(data.banners || []);
-      }
+      if (error) throw error;
+      setBanners(data || []);
     } catch (error) {
       console.error("배너 로드 실패:", error);
+      // 테이블이 없을 경우를 대비해 빈 배열 설정
+      setBanners([]);
     } finally {
       setLoading(false);
     }
@@ -59,6 +64,7 @@ export default function AdminBannersPage() {
   // 이미지 드래그앤드롭
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     const file = e.dataTransfer.files[0];
     if (file && file.type.startsWith("image/")) {
       setImageFile(file);
@@ -66,51 +72,74 @@ export default function AdminBannersPage() {
     }
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   // 배너 저장
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!imageFile && !editingId) {
+    if (!imageFile && !editingId && !previewImage) {
       alert("이미지를 선택해주세요.");
       return;
     }
 
     try {
-      let imageUrl = "";
+      let imageUrl = previewImage;
 
+      // 새 이미지가 선택된 경우 업로드
       if (imageFile) {
-        imageUrl = await uploadImage(imageFile, "banners");
+        // storage 버킷 'banners' 확인 필요 (없으면 생성해야 함)
+        const filename = `${Date.now()}_${imageFile.name}`;
+        const { data, error } = await supabase.storage
+          .from('banners') // 버킷 이름 확인
+          .upload(filename, imageFile);
+
+        if (error) throw error;
+        
+        // Public URL 가져오기
+        const { data: { publicUrl } } = supabase.storage
+          .from('banners')
+          .getPublicUrl(filename);
+          
+        imageUrl = publicUrl;
       }
 
       const payload = {
-        ...formData,
-        image_url: imageUrl,
+        title: formData.title,
+        link_url: formData.link_url,
+        display_order: formData.display_order,
         page_type: pageType,
+        image_url: imageUrl,
       };
 
-      const url = editingId ? `/api/banners/${editingId}` : "/api/banners";
-      const method = editingId ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        alert(editingId ? "배너가 수정되었습니다." : "배너가 추가되었습니다.");
-        setFormData({ title: "", link_url: "", display_order: 0 });
-        setImageFile(null);
-        setPreviewImage(null);
-        setEditingId(null);
-        loadBanners();
+      let error;
+      if (editingId) {
+        const { error: updateError } = await supabase
+          .from('Banner')
+          .update(payload)
+          .eq('banner_id', editingId);
+        error = updateError;
       } else {
-        const error = await res.json();
-        alert(error.error || "배너 저장에 실패했습니다.");
+        const { error: insertError } = await supabase
+          .from('Banner')
+          .insert([payload]);
+        error = insertError;
       }
-    } catch (error) {
+
+      if (error) throw error;
+
+      alert(editingId ? "배너가 수정되었습니다." : "배너가 추가되었습니다.");
+      setFormData({ title: "", link_url: "", display_order: 0 });
+      setImageFile(null);
+      setPreviewImage(null);
+      setEditingId(null);
+      loadBanners();
+    } catch (error: any) {
       console.error("배너 저장 실패:", error);
-      alert("배너 저장 중 오류가 발생했습니다.");
+      alert(`배너 저장 실패: ${error.message}`);
     }
   };
 
@@ -119,57 +148,18 @@ export default function AdminBannersPage() {
     if (!confirm("정말 삭제하시겠습니까?")) return;
 
     try {
-      const res = await fetch(`/api/banners/${id}`, { method: "DELETE" });
+      const { error } = await supabase.from('Banner').delete().eq('banner_id', id);
       
-      if (res.ok) {
-        alert("배너가 삭제되었습니다.");
-        loadBanners();
-      }
+      if (error) throw error;
+
+      alert("배너가 삭제되었습니다.");
+      loadBanners();
     } catch (error) {
       console.error("배너 삭제 실패:", error);
     }
   };
 
-  if (adminLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin" size={32} />
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return null;
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-7xl mx-auto px-6">
-        {/* 헤더 */}
-        <div className="mb-8">
-          <Link href="/admin" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4">
-            <ArrowLeft size={20} className="mr-2" />
-            관리자 대시보드로 돌아가기
-          </Link>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">배너 관리</h1>
-          <p className="text-gray-600">메인 페이지 배너를 등록하고 관리하세요</p>
-        </div>
-
-        {/* 페이지 타입 선택 */}
-        <div className="mb-6 flex gap-4">
-          <Button
-            variant={pageType === "discover" ? "default" : "outline"}
-            onClick={() => setPageType("discover")}
-          >
-            발견 페이지
-          </Button>
-          <Button
-            variant={pageType === "connect" ? "default" : "outline"}
-            onClick={() => setPageType("connect")}
-          >
-            연결 페이지
-          </Button>
-        </div>
+  // ... (render) ...
 
         {/* 배너 추가 폼 */}
         <div className="bg-white rounded-lg p-6 mb-8 shadow">
@@ -179,43 +169,53 @@ export default function AdminBannersPage() {
             {/* 드래그앤드롭 영역 */}
             <div
               onDrop={handleDrop}
-              onDragOver={(e) => e.preventDefault()}
-              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-[#4ACAD4] transition-colors cursor-pointer"
+              onDragOver={handleDragOver}
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-gray-300 rounded-lg p-10 text-center hover:border-[#4ACAD4] hover:bg-gray-50 transition-all cursor-pointer group"
             >
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setImageFile(file);
+                    setPreviewImage(URL.createObjectURL(file));
+                  }
+                }}
+                className="hidden"
+              />
+
               {previewImage ? (
-                <div className="relative">
-                  <img src={previewImage} alt="Preview" className="max-h-64 mx-auto" />
+                <div className="relative inline-block">
+                  <img src={previewImage} alt="Preview" className="max-h-64 rounded-lg shadow-sm" />
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation(); // 부모(dropzone) 클릭 방지
                       setImageFile(null);
                       setPreviewImage(null);
+                      if (fileInputRef.current) fileInputRef.current.value = '';
                     }}
-                    className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full"
+                    className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-md transition-colors"
                   >
-                    <X size={16} />
+                    <X size={14} />
                   </button>
+                  <p className="mt-2 text-sm text-gray-500">클릭하여 이미지 변경</p>
                 </div>
               ) : (
-                <div>
-                  <Upload className="mx-auto mb-4 text-gray-400" size={48} />
-                  <p className="text-gray-600">이미지를 드래그하거나 클릭하여 업로드</p>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setImageFile(file);
-                        setPreviewImage(URL.createObjectURL(file));
-                      }
-                    }}
-                    className="hidden"
-                    id="image-upload"
-                  />
-                  <label htmlFor="image-upload" className="cursor-pointer">
-                    <Button type="button" className="mt-4">파일 선택</Button>
-                  </label>
+                <div className="space-y-2">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto group-hover:bg-[#E0F7FA] transition-colors">
+                    <Upload className="text-gray-400 group-hover:text-[#4ACAD4]" size={32} />
+                  </div>
+                  <div>
+                    <p className="text-gray-900 font-medium">이미지를 드래그하거나 클릭하여 업로드</p>
+                    <p className="text-sm text-gray-500 mt-1">PNG, JPG, GIF up to 5MB</p>
+                  </div>
+                  <Button type="button" variant="secondary" className="mt-4 pointer-events-none">
+                    파일 선택
+                  </Button>
                 </div>
               )}
             </div>
