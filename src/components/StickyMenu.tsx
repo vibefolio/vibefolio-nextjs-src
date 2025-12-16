@@ -115,19 +115,16 @@ export function StickyMenu({
     onSetSort?.(value);
   };
 
-  // 카테고리 토글 (복수 선택)
+  // 카테고리 클릭 (단일 선택)
   const handleCategoryToggle = (value: string) => {
     if (value === "all") {
-      // 전체 선택 시 모두 해제
+      // 전체 선택
       setSelectedCategories([]);
       onSetCategory("all");
     } else {
-      const newCategories = selectedCategories.includes(value)
-        ? selectedCategories.filter(c => c !== value)
-        : [...selectedCategories, value];
-      
-      setSelectedCategories(newCategories);
-      onSetCategory(newCategories.length === 0 ? "all" : newCategories);
+      // 해당 카테고리만 선택 (단일 선택)
+      setSelectedCategories([value]);
+      onSetCategory(value);
     }
   };
 
