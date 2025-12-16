@@ -469,7 +469,7 @@ export function ProjectDetailModalV2({
                 src={project.urls.full}
                 alt={project.alt_description || "Project Image"}
                 className="w-auto max-w-full h-auto object-contain cursor-zoom-in"
-                style={{ maxWidth: project.width || '100%' }}
+                style={{ maxWidth: '90%' }}
                 onClick={() => setLightboxOpen(true)}
               />
               
@@ -607,7 +607,7 @@ export function ProjectDetailModalV2({
                   src={project.urls.full}
                   alt={project.alt_description || "Project Image"}
                   className="max-w-full h-auto object-contain object-top cursor-zoom-in"
-                  style={{ maxWidth: Math.min(project.width || 1200, 1200) }}
+                  style={{ maxWidth: '90%' }}
                   onClick={() => setLightboxOpen(true)}
                 />
               </div>
