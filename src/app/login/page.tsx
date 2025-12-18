@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
+import { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";
 
@@ -28,7 +29,7 @@ export default function LoginPage() {
     };
     checkSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       if (event === 'SIGNED_IN' && session) {
         router.replace('/');
       }
@@ -137,7 +138,7 @@ export default function LoginPage() {
             계정이 없으신가요?{" "}
             <Link
               href="/signup"
-              className="font-medium text-[#4ACAD4] hover:text-[#41a3aa]"
+              className="font-medium text-primary hover:underline"
             >
               회원가입
             </Link>
@@ -225,7 +226,7 @@ export default function LoginPage() {
                 id="remember-me"
                 name="remember-me"
                 type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 text-[#4ACAD4] focus:ring-[#4ACAD4]"
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
               />
               <label
                 htmlFor="remember-me"
@@ -238,7 +239,7 @@ export default function LoginPage() {
             <div className="text-sm">
               <a
                 href="#"
-                className="font-medium text-[#4ACAD4] hover:text-[#41a3aa]"
+                className="font-medium text-primary hover:underline"
               >
                 비밀번호 찾기
               </a>
@@ -249,7 +250,7 @@ export default function LoginPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#4ACAD4] hover:bg-[#41a3aa] text-white"
+              className="w-full btn-primary"
             >
               {loading ? "로그인 중..." : "로그인"}
             </Button>
