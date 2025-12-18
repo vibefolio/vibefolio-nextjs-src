@@ -38,6 +38,7 @@ export default function AdminPage() {
     totalBanners: 0,
     totalNotices: 0,
     totalFaqs: 0,
+    totalPopups: 0,
   });
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [recentProjects, setRecentProjects] = useState<any[]>([]);
@@ -83,6 +84,11 @@ export default function AdminPage() {
           .from('faqs')
           .select('*', { count: 'exact', head: true });
 
+        // 팝업 수
+        const { count: popupCount } = await supabase
+          .from('popups')
+          .select('*', { count: 'exact', head: true });
+
         // 최근 프로젝트
         const { data: projects } = await supabase
           .from('Project')
@@ -105,6 +111,7 @@ export default function AdminPage() {
           totalBanners: banners.length,
           totalNotices: noticeCount || 0,
           totalFaqs: faqCount || 0,
+          totalPopups: popupCount || 0,
         });
 
         setRecentProjects(projects || []);
@@ -136,6 +143,15 @@ export default function AdminPage() {
       bgColor: "bg-green-50",
       path: "/admin/faqs",
       count: stats.totalFaqs,
+    },
+    {
+      title: "팝업 광고 관리",
+      description: "메인 페이지 팝업 등록 및 관리",
+      icon: Megaphone,
+      color: "text-purple-600",
+      bgColor: "bg-purple-50",
+      path: "/admin/popups",
+      count: stats.totalPopups,
     },
     {
       title: "배너 관리",

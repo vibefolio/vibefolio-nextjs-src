@@ -27,6 +27,7 @@ const ProjectDetailModalV2 = dynamic(() =>
   { ssr: false }
 );
 import { useAuth } from "@/lib/auth/AuthContext";
+import { PopupModal } from "@/components/PopupModal";
 
 interface ImageDialogProps {
   id: string;
@@ -230,6 +231,9 @@ export default function Home() {
         <section className="w-full">
           <MainBanner loading={loading} gallery={[]} />
         </section>
+
+        {/* 팝업 모달 */}
+        <PopupModal />
 
         {/* 개인화 필터 알림 */}
         {/* 개인화 필터 제안 (아직 적용 안함) */}
