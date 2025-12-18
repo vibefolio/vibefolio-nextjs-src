@@ -229,7 +229,7 @@ export default function Home() {
       <main className="w-full">
         {/* 메인 배너 */}
         <section className="w-full">
-          <MainBanner loading={loading} gallery={[]} />
+          <MainBanner />
         </section>
 
         {/* 팝업 모달 */}
