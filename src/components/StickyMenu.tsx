@@ -165,7 +165,7 @@ export function StickyMenu({
   return (
     <div className={`sticky top-16 z-20 w-full bg-white/95 backdrop-blur-sm border-b border-gray-100 transition-all duration-300 ${isScrolled ? "h-11 shadow-md" : "h-16 md:h-18"}`}>
       {/* 메인 카테고리 바 */}
-      <section className={`flex items-center justify-between px-4 md:px-8 lg:px-12 h-full gap-4`}>
+      <section className={`flex items-center justify-between px-2 md:px-4 lg:px-6 h-full gap-4`}>
         {/* 카테고리 목록 */}
         <div className="flex items-center gap-1 md:gap-2 overflow-x-auto no-scrollbar h-full flex-1">
           {categories.map((category) => {
