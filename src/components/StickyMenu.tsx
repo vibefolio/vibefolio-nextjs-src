@@ -151,9 +151,9 @@ export function StickyMenu({
   const hasActiveFilters = selectedCategories.length > 0 || selectedFields.length > 0;
 
   return (
-    <div className="sticky top-14 z-10 w-full bg-white border-b border-gray-100 overflow-visible">
+    <div className="sticky top-16 z-10 w-full bg-white border-b border-gray-100 overflow-visible">
       {/* 메인 카테고리 바 */}
-      <section className="flex items-center justify-between px-2 md:px-12 lg:px-20 py-3 md:py-6 pt-6 md:pt-14">
+      <section className="flex items-center justify-between px-2 md:px-12 lg:px-20 py-2 md:py-3">
         {/* 카테고리 목록 */}
         <div className="flex items-center justify-between flex-1 gap-1 md:gap-4 lg:gap-6 overflow-x-auto overflow-y-visible no-scrollbar">
           {categories.map((category) => {
@@ -175,7 +175,7 @@ export function StickyMenu({
                 <div className="relative pt-1 md:pt-2 overflow-visible">
                   <FontAwesomeIcon 
                     icon={category.iconSolid} 
-                    className={`w-5 h-5 md:w-7 md:h-7 transition-colors duration-200 ${
+                    className={`w-5 h-5 md:w-5 md:h-5 transition-colors duration-200 ${
                       showActive
                         ? "text-[#16A34A]"
                         : "text-gray-400 group-hover:text-[#16A34A]"
@@ -272,7 +272,7 @@ export function StickyMenu({
                 <button
                   key={field.id}
                   onClick={() => handleFieldToggle(field.id)}
-                  className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                  className={`px-4 py-1.5 rounded-full border text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2 ${
                     isSelected
                       ? "bg-[#16A34A] border-[#16A34A] text-white"
                       : "bg-white border-gray-200 text-gray-600 hover:border-green-400 hover:text-green-600"
