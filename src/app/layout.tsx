@@ -46,7 +46,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white min-h-screen custom-scrollbar`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white min-h-screen custom-scrollbar overscroll-none`}
       >
         <ClientProviders>
             {/* TopHeader - 최상단 배너 */}
