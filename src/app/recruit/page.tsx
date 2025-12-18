@@ -277,7 +277,7 @@ export default function RecruitPage() {
     <div className="min-h-screen bg-gray-50">
       {/* 배너 섹션 */}
       <div className="w-full px-0 py-3 bg-white">
-        <MainBanner loading={false} gallery={banners} />
+        <MainBanner />
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
