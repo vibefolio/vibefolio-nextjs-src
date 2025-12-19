@@ -67,6 +67,27 @@ export function MainBanner() {
         }
       } catch (error) {
         console.error('배너 로드 실패:', error);
+        // 에러 발생 시에도 샘플 배너 표시
+        setBanners([
+          {
+            id: 0,
+            title: "Creative Space",
+            subtitle: "당신의 영감을 펼칠 수 있는 공간",
+            image_url: "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2670&auto=format&fit=crop",
+            link_url: null,
+            bg_color: "#1a1a1a",
+            text_color: "#ffffff"
+          },
+          {
+            id: 1,
+            title: "Discover Art",
+            subtitle: "새로운 크리에이티브를 발견하세요",
+            image_url: "https://images.unsplash.com/photo-1558655146-d09347e92766?q=80&w=2664&auto=format&fit=crop",
+            link_url: null,
+            bg_color: "#2a2a2a",
+            text_color: "#ffffff"
+          }
+        ]);
       } finally {
         setLoading(false);
       }
