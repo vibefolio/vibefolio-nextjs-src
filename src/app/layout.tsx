@@ -11,6 +11,7 @@ import "./globals.css";
 import { ClientProviders } from "@/components/ClientProviders";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { Toaster } from "@/components/ui/sonner";
+import NextTopLoader from 'nextjs-toploader';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -57,6 +58,17 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white min-h-screen custom-scrollbar overscroll-none`}
       >
         <ClientProviders>
+            <NextTopLoader 
+              color="#16A34A"
+              initialPosition={0.08}
+              crawlSpeed={200}
+              height={3}
+              crawl={true}
+              showSpinner={false}
+              easing="ease"
+              speed={200}
+              shadow="0 0 10px #16A34A,0 0 5px #16A34A"
+            />
             {/* TopHeader - 최상단 배너 */}
             <TopHeader />
             
