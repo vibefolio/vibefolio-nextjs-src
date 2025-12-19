@@ -178,7 +178,7 @@ export function StickyMenu({
             return (
               <div
                 key={category.value}
-                className={`group flex items-center gap-1.5 md:gap-2 px-2.5 py-1 rounded-full cursor-pointer transition-all duration-200 whitespace-nowrap ${
+                className={`group flex items-center gap-1.5 md:gap-2 px-3 py-1.5 rounded-full cursor-pointer transition-all duration-200 whitespace-nowrap ${
                   isActive ? "bg-green-50" : "hover:bg-slate-50"
                 }`}
                 onClick={() => handleCategoryToggle(category.value)}
@@ -188,7 +188,7 @@ export function StickyMenu({
                 <div className="relative">
                   <FontAwesomeIcon 
                     icon={category.iconSolid} 
-                    className={`transition-all duration-200 ${isScrolled ? "w-3 h-3" : "w-3.5 h-3.5 md:w-4 md:h-4"} ${
+                    className={`transition-all duration-200 ${isScrolled ? "w-3.5 h-3.5" : "w-4 h-4 md:w-[18px] md:h-[18px]"} ${
                       showActive ? "text-green-600" : "text-slate-400 group-hover:text-green-600"
                     }`}
                   />
@@ -196,8 +196,8 @@ export function StickyMenu({
                     <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-500 rounded-full border border-white" />
                   )}
                 </div>
-                <span className={`transition-all ${isScrolled ? "text-xs font-semibold" : "text-[13px] md:text-sm font-medium"} ${
-                  isActive ? "text-green-700 font-bold" : "text-slate-500 group-hover:text-green-600"
+                <span className={`transition-all ${isScrolled ? "text-[13px] font-semibold" : "text-sm md:text-[15px] font-medium"} ${
+                  isActive ? "text-green-700 font-bold" : "text-slate-600 group-hover:text-green-600"
                 }`}>
                   {category.label}
                 </span>
