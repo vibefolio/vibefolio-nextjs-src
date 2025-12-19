@@ -4,9 +4,9 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { TiptapEditor } from "@/components/editor/TiptapEditor";
+import '@/components/editor/tiptap.css';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
   faCamera,
   faWandMagicSparkles,
@@ -21,14 +21,16 @@ import {
   faMobileScreen,
   faGamepad,
   faUpload,
-  faXmark,
-  faImage,
   faCheck,
+  faArrowLeft,
+  faEye,
+  faSave,
 } from "@fortawesome/free-solid-svg-icons";
 import { supabase } from "@/lib/supabase/client";
 import { uploadImage } from "@/lib/supabase/storage";
+import { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 
-// 장르 카테고리 (메인) - Font Awesome
+// 장르 카테고리
 const genreCategories: { id: string; label: string; icon: IconDefinition }[] = [
   { id: "photo", label: "포토", icon: faCamera },
   { id: "animation", label: "애니메이션", icon: faWandMagicSparkles },
@@ -44,7 +46,6 @@ const genreCategories: { id: string; label: string; icon: IconDefinition }[] = [
   { id: "game", label: "게임", icon: faGamepad },
 ];
 
-// 산업 분야 카테고리
 const fieldCategories = [
   { id: "finance", label: "경제/금융" },
   { id: "healthcare", label: "헬스케어" },
@@ -59,21 +60,19 @@ const fieldCategories = [
   { id: "other", label: "기타" },
 ];
 
-export default function ProjectUploadPage() {
+export default function TiptapUploadPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    imageUrl: "",
-  });
+  const [step, setStep] = useState<'info' | 'content'>('info');
+  const [title, setTitle] = useState("");
+  const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
-  // 초기화 (세션 확인)
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -84,7 +83,23 @@ export default function ProjectUploadPage() {
       }
       setUserId(user.id);
 
-      // 사용자 관심사 로드하여 기본 선택값으로 설정
+      // 로컬스토리지에서 임시 저장된 데이터 복구
+      const savedDraft = localStorage.getItem('project_draft');
+      if (savedDraft) {
+        try {
+          const draft = JSON.parse(savedDraft);
+          if (confirm('임시 저장된 작업이 있습니다. 불러오시겠습니까?')) {
+            setTitle(draft.title || '');
+            setContent(draft.content || '');
+            setSelectedGenres(draft.genres || []);
+            setSelectedFields(draft.fields || []);
+          }
+        } catch (e) {
+          console.error('Draft load error:', e);
+        }
+      }
+
+      // 사용자 관심사 로드
       try {
         const { data: userData } = await supabase
           .from('users')
@@ -94,13 +109,9 @@ export default function ProjectUploadPage() {
 
         if (userData) {
           const interests = (userData as any).interests;
-          if (interests) {
-            if (interests.genres && Array.isArray(interests.genres) && interests.genres.length > 0) {
-              setSelectedGenres(interests.genres);
-            }
-            if (interests.fields && Array.isArray(interests.fields) && interests.fields.length > 0) {
-              setSelectedFields(interests.fields);
-            }
+          if (interests && !savedDraft) {
+            if (interests.genres) setSelectedGenres(interests.genres);
+            if (interests.fields) setSelectedFields(interests.fields);
           }
         }
       } catch (error) {
@@ -111,96 +122,102 @@ export default function ProjectUploadPage() {
     init();
   }, [router]);
 
-  // 장르 토글
-  const toggleGenre = (id: string) => {
-    setSelectedGenres(prev => 
-      prev.includes(id) 
-        ? prev.filter(g => g !== id)
-        : [...prev, id]
-    );
-  };
+  // 자동 저장 (30초마다)
+  useEffect(() => {
+    if (step === 'content' && title) {
+      const interval = setInterval(() => {
+        const draft = {
+          title,
+          content,
+          genres: selectedGenres,
+          fields: selectedFields,
+          savedAt: new Date().toISOString(),
+        };
+        localStorage.setItem('project_draft', JSON.stringify(draft));
+        setLastSaved(new Date());
+      }, 30000); // 30초
 
-  // 분야 토글
-  const toggleField = (id: string) => {
-    setSelectedFields(prev => 
-      prev.includes(id) 
-        ? prev.filter(f => f !== id)
-        : [...prev, id]
-    );
-  };
+      return () => clearInterval(interval);
+    }
+  }, [step, title, content, selectedGenres, selectedFields]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoverImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
         alert('이미지 크기는 10MB를 초과할 수 없습니다.');
         return;
       }
-      if (!file.type.startsWith('image/')) {
-        alert('이미지 파일만 업로드 가능합니다.');
-        return;
-      }
-      setImageFile(file);
+      setCoverImage(file);
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPreviewImage(reader.result as string);
+        setCoverPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isSubmitting) return;
+  const toggleGenre = (id: string) => {
+    setSelectedGenres(prev => 
+      prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]
+    );
+  };
 
-    // 유효성 검사
+  const toggleField = (id: string) => {
+    setSelectedFields(prev => 
+      prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]
+    );
+  };
+
+  const handleNext = () => {
+    if (!title.trim()) {
+      alert('프로젝트 제목을 입력해주세요.');
+      return;
+    }
+    if (!coverImage) {
+      alert('커버 이미지를 선택해주세요.');
+      return;
+    }
     if (selectedGenres.length === 0) {
       alert('최소 1개의 장르를 선택해주세요.');
+      return;
+    }
+    setStep('content');
+  };
+
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+    if (!content.trim()) {
+      alert('프로젝트 내용을 작성해주세요.');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      if (!userId) throw new Error('로그인 정보가 없습니다.');
-      if (!imageFile) throw new Error('이미지를 선택해주세요.');
-      if (!formData.title.trim()) throw new Error('제목을 입력해주세요.');
+      if (!userId || !coverImage) throw new Error('필수 정보가 누락되었습니다.');
 
-      // 1. 이미지 업로드
-      console.log("이미지 업로드 시작...");
-      const imageUrl = await uploadImage(imageFile);
-      console.log("이미지 업로드 완료:", imageUrl);
+      // 커버 이미지 업로드
+      const coverUrl = await uploadImage(coverImage);
 
-      // 2. 프로젝트 생성 API 호출
-      // 임시로 첫 번째 장르를 category_id로 매핑 (추후 태그 시스템으로 변경)
+      // 프로젝트 생성
       const genreToCategory: { [key: string]: number } = {
-        photo: 1,
-        animation: 2,
-        graphic: 3,
-        design: 4,
-        video: 5,
-        cinema: 6,
-        audio: 7,
-        "3d": 8,
-        text: 9,
-        code: 10,
-        webapp: 11,
-        game: 12,
+        photo: 1, animation: 2, graphic: 3, design: 4,
+        video: 5, cinema: 6, audio: 7, "3d": 8,
+        text: 9, code: 10, webapp: 11, game: 12,
       };
       const category_id = genreToCategory[selectedGenres[0]] || 1;
 
-      console.log("API 호출 시작...");
       const response = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: userId,
-          category_id: category_id,
-          title: formData.title,
-          content_text: formData.description,
-          thumbnail_url: imageUrl,
-          rendering_type: 'image',
-          // 추후 태그 저장용 (custom_data에 임시 저장)
+          category_id,
+          title,
+          content_text: content, // Tiptap HTML content
+          thumbnail_url: coverUrl,
+          rendering_type: 'rich_text', // Tiptap 렌더링 타입
           custom_data: JSON.stringify({
             genres: selectedGenres,
             fields: selectedFields,
@@ -209,13 +226,12 @@ export default function ProjectUploadPage() {
       });
 
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error || '서버 에러');
 
-      if (!response.ok) {
-        console.error("API Error Response:", data);
-        throw new Error(data.error || `서버 에러: ${response.status}`);
-      }
+      // 임시 저장 데이터 삭제
+      localStorage.removeItem('project_draft');
 
-      alert('프로젝트가 성공적으로 등록되었습니다!');
+      alert('프로젝트가 성공적으로 발행되었습니다!');
       router.push('/');
     } catch (error: any) {
       console.error('Submit Error:', error);
@@ -225,101 +241,88 @@ export default function ProjectUploadPage() {
     }
   };
 
-  return (
-    <div className="w-full min-h-screen bg-gray-50 py-8 md:py-12 px-4">
-      <div className="max-w-3xl mx-auto">
-        <div className="bg-white rounded-lg border border-gray-200 p-6 md:p-10 fade-in shadow-subtle">
-          <h1 className="text-2xl md:text-3xl font-bold text-primary mb-2">
-            프로젝트 등록
-          </h1>
-          <p className="text-sm md:text-base text-secondary mb-8">
-            당신의 AI 창작물을 세상과 공유하세요
-          </p>
+  if (step === 'info') {
+    return (
+      <div className="w-full min-h-screen bg-gradient-to-br from-slate-50 via-white to-green-50 py-12 px-4">
+        <div className="max-w-5xl mx-auto">
+          <div className="mb-8">
+            <button
+              onClick={() => router.push('/')}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors group"
+            >
+              <FontAwesomeIcon icon={faArrowLeft} className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+              <span className="text-sm font-medium">돌아가기</span>
+            </button>
+            <h1 className="text-5xl font-black text-gray-900 mb-3 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+              새 프로젝트 만들기
+            </h1>
+            <p className="text-lg text-gray-600">
+              당신의 창작물을 세상과 공유하세요 ✨
+            </p>
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* 이미지 업로드 */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">프로젝트 이미지</label>
-              <div className="relative">
-                {previewImage ? (
-                  <div className="relative w-full aspect-square md:aspect-video rounded-lg overflow-hidden border border-gray-100 bg-gray-50">
-                    <img
-                      src={previewImage}
-                      alt="Preview"
-                      className="w-full h-full object-contain"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPreviewImage(null);
-                        setImageFile(null);
-                      }}
-                      className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-all"
-                    >
-                      <FontAwesomeIcon icon={faXmark} className="w-5 h-5" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center w-full aspect-square md:aspect-video border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#4ACAD4] hover:bg-gray-50 transition-all">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <FontAwesomeIcon icon={faImage} className="w-12 h-12 mb-4 text-gray-400" />
-                      <p className="mb-2 text-sm text-gray-500">
-                        <span className="font-semibold">클릭하여 업로드</span>{" "}
-                        또는 드래그 앤 드롭
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        PNG, JPG, GIF (최대 10MB)
-                      </p>
+          <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-8 md:p-12 space-y-8">
+            {/* 커버 이미지 */}
+            <div className="space-y-3">
+              <label className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                커버 이미지
+              </label>
+              <p className="text-sm text-gray-500">프로젝트를 대표하는 이미지를 선택하세요</p>
+              {coverPreview ? (
+                <div className="relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-gray-200 group">
+                  <img src={coverPreview} alt="Cover" className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => {
+                      setCoverImage(null);
+                      setCoverPreview(null);
+                    }}
+                    className="absolute top-4 right-4 p-3 bg-black/60 hover:bg-black/80 rounded-full text-white transition-all opacity-0 group-hover:opacity-100"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center w-full aspect-video border-2 border-dashed border-gray-300 rounded-2xl cursor-pointer hover:border-green-500 hover:bg-green-50/30 transition-all group">
+                  <div className="flex flex-col items-center">
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <FontAwesomeIcon icon={faCamera} className="w-10 h-10 text-green-600" />
                     </div>
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      required
-                    />
-                  </label>
-                )}
-              </div>
+                    <p className="text-lg font-semibold text-gray-700 mb-1">이미지 업로드</p>
+                    <p className="text-sm text-gray-500">PNG, JPG, GIF (최대 10MB)</p>
+                  </div>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleCoverImageChange}
+                  />
+                </label>
+              )}
             </div>
 
             {/* 제목 */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">프로젝트 제목</label>
+            <div className="space-y-3">
+              <label className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                프로젝트 제목
+              </label>
               <Input
                 type="text"
-                placeholder="프로젝트 제목을 입력하세요"
-                value={formData.title}
-                onChange={(e) =>
-                  setFormData({ ...formData, title: e.target.value })
-                }
-                required
-                className="border-gray-200 focus:border-[#4ACAD4]"
+                placeholder="예: AI로 만든 판타지 일러스트 시리즈"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="text-lg h-14 border-2 border-gray-200 focus:border-green-500 rounded-xl transition-all"
               />
             </div>
 
-            {/* 설명 */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">프로젝트 설명</label>
-              <Textarea
-                placeholder="프로젝트에 대해 설명해주세요. #태그를 추가할 수도 있어요!"
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                required
-                rows={5}
-                className="border-gray-200 resize-none focus:border-[#4ACAD4]"
-              />
-            </div>
-
-            {/* 장르 선택 (필수) */}
+            {/* 장르 */}
             <div className="space-y-3">
-              <label className="text-sm font-medium">
-                프로젝트 장르 <span className="text-red-500">*</span>
-                <span className="text-xs text-gray-500 ml-2">복수 선택 가능</span>
+              <label className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                장르 <span className="text-red-500 ml-1">*</span>
               </label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-3">
                 {genreCategories.map((genre) => {
                   const isSelected = selectedGenres.includes(genre.id);
                   return (
@@ -327,14 +330,14 @@ export default function ProjectUploadPage() {
                       key={genre.id}
                       type="button"
                       onClick={() => toggleGenre(genre.id)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 transition-all ${
+                      className={`flex items-center gap-2 px-5 py-3 rounded-full border-2 transition-all font-medium ${
                         isSelected
-                          ? "bg-[#4ACAD4] border-[#4ACAD4] text-white"
-                          : "bg-white border-gray-200 text-gray-700 hover:border-[#4ACAD4] hover:text-[#4ACAD4]"
+                          ? "bg-gradient-to-r from-green-500 to-emerald-500 border-green-500 text-white shadow-lg shadow-green-200 scale-105"
+                          : "bg-white border-gray-200 text-gray-700 hover:border-green-400 hover:shadow-md hover:scale-105"
                       }`}
                     >
                       <FontAwesomeIcon icon={genre.icon} className="w-4 h-4" />
-                      <span className="text-sm font-medium">{genre.label}</span>
+                      <span>{genre.label}</span>
                       {isSelected && <FontAwesomeIcon icon={faCheck} className="w-3 h-3" />}
                     </button>
                   );
@@ -342,11 +345,11 @@ export default function ProjectUploadPage() {
               </div>
             </div>
 
-            {/* 산업 분야 선택 (선택) */}
+            {/* 산업 분야 */}
             <div className="space-y-3">
-              <label className="text-sm font-medium">
-                관련 산업 분야
-                <span className="text-xs text-gray-500 ml-2">선택사항, 복수 선택 가능</span>
+              <label className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                관련 산업 분야 <span className="text-sm font-normal text-gray-500">(선택)</span>
               </label>
               <div className="flex flex-wrap gap-2">
                 {fieldCategories.map((field) => {
@@ -358,74 +361,81 @@ export default function ProjectUploadPage() {
                       onClick={() => toggleField(field.id)}
                       className={`px-4 py-2 rounded-full border-2 transition-all text-sm font-medium ${
                         isSelected
-                          ? "bg-indigo-500 border-indigo-500 text-white"
-                          : "bg-white border-gray-200 text-gray-700 hover:border-indigo-400 hover:text-indigo-500"
+                          ? "bg-indigo-500 border-indigo-500 text-white shadow-md"
+                          : "bg-white border-gray-200 text-gray-700 hover:border-indigo-400"
                       }`}
                     >
                       {field.label}
-                      {isSelected && <FontAwesomeIcon icon={faCheck} className="w-3 h-3 ml-1" />}
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* 선택된 태그 요약 */}
-  {(selectedGenres.length > 0 || selectedFields.length > 0) && (
-    <div className="p-4 bg-gray-50 rounded-lg">
-      <p className="text-sm text-gray-600 mb-2">선택된 프로젝트 태그:</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedGenres.map(id => {
-                    const genre = genreCategories.find(g => g.id === id);
-                    return genre ? (
-                      <span key={id} className="px-3 py-1 bg-[#4ACAD4]/20 text-[#4ACAD4] rounded-full text-sm font-medium">
-                        #{genre.label}
-                      </span>
-                    ) : null;
-                  })}
-                  {selectedFields.map(id => {
-                    const field = fieldCategories.find(f => f.id === id);
-                    return field ? (
-                      <span key={id} className="px-3 py-1 bg-indigo-100 text-indigo-600 rounded-full text-sm font-medium">
-                        #{field.label}
-                      </span>
-                    ) : null;
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* 버튼 */}
-            <div className="flex flex-col md:flex-row gap-4 pt-4">
+            {/* 다음 버튼 */}
+            <div className="pt-6">
               <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push("/")}
-                className="flex-1 h-12"
-                disabled={isSubmitting}
+                onClick={handleNext}
+                className="w-full h-16 text-lg font-bold bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white rounded-xl shadow-xl hover:shadow-2xl transition-all transform hover:scale-[1.02]"
               >
-                취소
-              </Button>
-              <Button
-                type="submit"
-                className="flex-1 h-12 bg-[#4ACAD4] hover:bg-[#3dbdc6] text-white"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <span className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    등록 중...
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <FontAwesomeIcon icon={faUpload} className="w-5 h-5" />
-                    프로젝트 등록
-                  </span>
-                )}
+                다음: 콘텐츠 작성하기 →
               </Button>
             </div>
-          </form>
+          </div>
         </div>
+      </div>
+    );
+  }
+
+  // Content Step with Tiptap
+  return (
+    <div className="w-full min-h-screen bg-white">
+      {/* Fixed Header */}
+      <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm backdrop-blur-sm bg-white/95">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setStep('info')}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <FontAwesomeIcon icon={faArrowLeft} className="w-5 h-5" />
+            </button>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+              <p className="text-xs text-gray-500">
+                {lastSaved && `마지막 저장: ${lastSaved.toLocaleTimeString('ko-KR')}`}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 shadow-lg"
+            >
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  발행 중...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faUpload} className="w-4 h-4" />
+                  발행하기
+                </span>
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Tiptap Editor */}
+      <div className="max-w-5xl mx-auto py-12 px-4">
+        <TiptapEditor
+          content={content}
+          onChange={setContent}
+          placeholder="여기에 프로젝트 내용을 작성하세요. 이미지, 영상, 링크 등을 자유롭게 추가할 수 있습니다..."
+        />
       </div>
     </div>
   );
