@@ -37,6 +37,9 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['lucide-react', '@fortawesome/react-fontawesome', 'dayjs'],
   },
   
+  // Turbopack 설정 (Next.js 16 기본값)
+  turbopack: {},
+  
   // 헤더 설정 (캐싱)
   async headers() {
     return [

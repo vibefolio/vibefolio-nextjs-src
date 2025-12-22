@@ -207,7 +207,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
             lastActivityRef.current = savedTime;
           } else {
-            lastActivityRef.current = Date.now();
+            // 저장된 활동 시간이 없으면 현재 시간으로 설정 (새로고침 시)
+            const now = Date.now();
+            lastActivityRef.current = now;
+            localStorage.setItem("lastActivity", now.toString());
           }
         }
 
