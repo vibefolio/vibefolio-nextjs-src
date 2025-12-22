@@ -16,7 +16,7 @@ const supabaseAdmin = createClient(
 // PUT: 항목 수정 (관리자만)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -43,7 +43,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const id = params.id;
+    const { id } = await params;
 
     const { data, error } = await supabaseAdmin
       .from('recruit_items')
@@ -70,7 +70,7 @@ export async function PUT(
 // DELETE: 항목 삭제 (관리자만)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -96,7 +96,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden: Admin only' }, { status: 403 });
     }
 
-    const id = params.id;
+    const { id } = await params;
 
     // Soft delete (is_active를 false로)
     const { error } = await supabaseAdmin
