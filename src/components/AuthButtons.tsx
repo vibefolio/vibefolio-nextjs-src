@@ -74,17 +74,20 @@ export function AuthButtons() {
     const intervalId = setInterval(checkAdminStatus, 5000);
 
     // 인증 상태 변경 감지
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string) => {
+    // supabase.auth가 없을 수 있으므로 안전하게 처리
+    const { data } = supabase.auth?.onAuthStateChange?.((event: string) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         checkAdminStatus();
       } else if (event === 'SIGNED_OUT') {
         setIsAdmin(false);
       }
-    });
+    }) || { data: { subscription: null } };
 
     return () => {
       clearInterval(intervalId);
-      subscription.unsubscribe();
+      if (data?.subscription) {
+        data.subscription.unsubscribe();
+      }
     };
   }, [user]);
 

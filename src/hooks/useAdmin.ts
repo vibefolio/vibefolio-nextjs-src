@@ -92,7 +92,8 @@ export function useAdmin(): AdminState {
     checkAdmin();
 
     // 인증 상태 변경 감지
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
+    // supabase.auth가 없을 수 있으므로 안전하게 처리
+    const { data } = supabase.auth?.onAuthStateChange?.((event: string, session: any) => {
       // 세션이 만료되거나 로그아웃되면 즉시 상태 업데이트
       if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' || !session) {
         if (mounted) {
@@ -106,12 +107,14 @@ export function useAdmin(): AdminState {
       } else if (event === 'SIGNED_IN') {
         checkAdmin();
       }
-    });
+    }) || { data: { subscription: null } };
 
     return () => {
       mounted = false;
       clearTimeout(timeoutId);
-      subscription.unsubscribe();
+      if (data?.subscription) {
+        data.subscription.unsubscribe();
+      }
     };
   }, []);
 
