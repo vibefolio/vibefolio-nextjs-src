@@ -80,137 +80,239 @@ export default function RecruitPage() {
     checkAdmin();
   }, []);
 
-  // 로컬 스토리지에서 항목 불러오기
+  // 데이터베이스에서 항목 불러오기
   useEffect(() => {
-    const savedItems = localStorage.getItem("recruitItems_2025_12");
-    if (savedItems) {
-      setItems(JSON.parse(savedItems));
-    } else {
-      // 2025년 12월 기준 최신 공모전 데이터 (크롤링 기반 업데이트)
-      const defaultItems: Item[] = [
-        {
-          id: 1,
-          title: "2025 제1회 퓨리얼 AI 영상 콘테스트",
-          description: "'퓨리얼 정수기와 함께하는 [  ]'을 주제로 한 AI 생성 영상 공모전입니다. 독창적인 아이디어와 AI 기술을 결합하여 도전해보세요!",
-          type: "contest",
-          date: "2025-12-21",
-          company: "퓨리얼(Pureal)",
-          prize: "총상금 500만원 (대상 300만원)",
-          link: "https://www.pureal.co.kr/contest", // 가상 링크 또는 실제 검색된 링크
-          location: "온라인 접수",
-        },
-        {
-          id: 2,
-          title: "2025 지역주력산업 영상 콘텐츠 공모전",
-          description: "중소벤처기업부 주최, 지역 주력 산업을 주제로 한 창의적인 영상 콘텐츠를 공모합니다. AI 기반 영상 제작툴 활용 가능.",
-          type: "contest",
-          date: "2025-12-26",
-          company: "중소벤처기업부",
-          prize: "장관상 및 상금 수여",
-          location: "대한민국 전역",
-          link: "https://www.mss.go.kr",
-        },
-        {
-          id: 3,
-          title: "AI for Good Film Festival 2026",
-          description: "AI 기술을 활용하여 글로벌 사회 문제를 해결하거나 긍정적인 영향을 주는 주제의 영화/영상 출품. UN ITU 주관 글로벌 행사.",
-          type: "contest",
-          date: "2026-03-15",
-          location: "Geneva, Switzerland (온라인 출품)",
-          company: "AI for Good (ITU)",
-          prize: "국제 영화제 상영 및 초청",
-          link: "https://aiforgood.itu.int/summit26/",
-        },
-        {
-          id: 4,
-          title: "팀플 기반 AI 워크샵: 10일 집중 영상제작",
-          description: "한국예술종합학교 전문사 영화과 주관. AI 툴을 활용한 단편 영화 제작 워크샵. 팀 프로젝트 기반 실습 진행.",
-          type: "event",
-          date: "2026-01-15",
-          location: "한국예술종합학교 및 온라인",
-          company: "한국예술종합학교",
-          salary: "참가비 무료",
-          link: "https://www.karts.ac.kr",
-        },
-        {
-          id: 5,
-          title: "AI Film & Ads Awards Cannes 2026",
-          description: "칸에서 열리는 AI 영화 및 광고제. 생성형 AI로 제작된 혁신적인 광고 및 단편 영화를 모집합니다.",
-          type: "contest",
-          date: "2026-05-22",
-          location: "Cannes, France",
-          prize: "트로피 및 칸 현지 초청",
-          link: "https://www.waiff.com", // World AI Film Festival 참조
-        },
-        {
-          id: 6,
-          title: "UI/UX 디자이너 채용 (AI/SaaS 스타트업)",
-          description: "생성형 AI 서비스를 함께 만들어갈 프로덕트 디자이너를 모십니다. Figma 능숙자, AI 툴 활용 경험 우대.",
-          type: "job",
-          date: "2026-01-31",
-          location: "서울 강남구 역삼동",
-          company: "바이브코퍼레이션",
-          salary: "연봉 5,000 ~ 8,000만원",
-          employmentType: "정규직",
-          link: "https://vibefolio.com/recruit",
-        }
-      ];
-      setItems(defaultItems);
-      localStorage.setItem("recruitItems_2025_12", JSON.stringify(defaultItems));
-    }
+    loadItems();
   }, []);
 
-  // 항목 추가/수정
-  const handleSubmit = () => {
+  const loadItems = async () => {
+    try {
+      // Supabase에서 활성화된 항목 가져오기
+      const { data, error } = await supabase
+        .from('recruit_items')
+        .select('*')
+        .eq('is_active', true)
+        .order('date', { ascending: true });
+
+      if (error) {
+        console.error('Failed to load recruit items:', error);
+        // 에러 발생 시 기본 데이터 사용
+        loadDefaultItems();
+        return;
+      }
+
+      if (data && data.length > 0) {
+        // DB 데이터를 Item 형식으로 변환
+        const formattedItems: Item[] = data.map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          type: item.type as "job" | "contest" | "event",
+          date: item.date,
+          location: item.location || undefined,
+          prize: item.prize || undefined,
+          salary: item.salary || undefined,
+          company: item.company || undefined,
+          employmentType: item.employment_type || undefined,
+          link: item.link || undefined,
+          thumbnail: item.thumbnail || undefined,
+        }));
+        setItems(formattedItems);
+      } else {
+        // DB에 데이터가 없으면 기본 데이터 사용
+        loadDefaultItems();
+      }
+    } catch (e) {
+      console.error('Error loading items:', e);
+      loadDefaultItems();
+    }
+  };
+
+  const loadDefaultItems = () => {
+    // 기본 데이터 (DB가 비어있거나 에러 발생 시)
+    const defaultItems: Item[] = [
+      {
+        id: 1,
+        title: "2025 제1회 퓨리얼 AI 영상 콘테스트",
+        description: "'퓨리얼 정수기와 함께하는 [  ]'을 주제로 한 AI 생성 영상 공모전입니다. 독창적인 아이디어와 AI 기술을 결합하여 도전해보세요!",
+        type: "contest",
+        date: "2025-12-21",
+        company: "퓨리얼(Pureal)",
+        prize: "총상금 500만원 (대상 300만원)",
+        link: "https://www.pureal.co.kr/contest",
+        location: "온라인 접수",
+      },
+      {
+        id: 2,
+        title: "2025 지역주력산업 영상 콘텐츠 공모전",
+        description: "중소벤처기업부 주최, 지역 주력 산업을 주제로 한 창의적인 영상 콘텐츠를 공모합니다. AI 기반 영상 제작툴 활용 가능.",
+        type: "contest",
+        date: "2025-12-26",
+        company: "중소벤처기업부",
+        prize: "장관상 및 상금 수여",
+        location: "대한민국 전역",
+        link: "https://www.mss.go.kr",
+      },
+      {
+        id: 3,
+        title: "AI for Good Film Festival 2026",
+        description: "AI 기술을 활용하여 글로벌 사회 문제를 해결하거나 긍정적인 영향을 주는 주제의 영화/영상 출품. UN ITU 주관 글로벌 행사.",
+        type: "contest",
+        date: "2026-03-15",
+        location: "Geneva, Switzerland (온라인 출품)",
+        company: "AI for Good (ITU)",
+        prize: "국제 영화제 상영 및 초청",
+        link: "https://aiforgood.itu.int/summit26/",
+      },
+      {
+        id: 4,
+        title: "팀플 기반 AI 워크샵: 10일 집중 영상제작",
+        description: "한국예술종합학교 전문사 영화과 주관. AI 툴을 활용한 단편 영화 제작 워크샵. 팀 프로젝트 기반 실습 진행.",
+        type: "event",
+        date: "2026-01-15",
+        location: "한국예술종합학교 및 온라인",
+        company: "한국예술종합학교",
+        salary: "참가비 무료",
+        link: "https://www.karts.ac.kr",
+      },
+      {
+        id: 5,
+        title: "AI Film & Ads Awards Cannes 2026",
+        description: "칸에서 열리는 AI 영화 및 광고제. 생성형 AI로 제작된 혁신적인 광고 및 단편 영화를 모집합니다.",
+        type: "contest",
+        date: "2026-05-22",
+        location: "Cannes, France",
+        prize: "트로피 및 칸 현지 초청",
+        link: "https://www.waiff.com",
+      },
+      {
+        id: 6,
+        title: "UI/UX 디자이너 채용 (AI/SaaS 스타트업)",
+        description: "생성형 AI 서비스를 함께 만들어갈 프로덕트 디자이너를 모십니다. Figma 능숙자, AI 툴 활용 경험 우대.",
+        type: "job",
+        date: "2026-01-31",
+        location: "서울 강남구 역삼동",
+        company: "바이브코퍼레이션",
+        salary: "연봉 5,000 ~ 8,000만원",
+        employmentType: "정규직",
+        link: "https://vibefolio.com/recruit",
+      }
+    ];
+    setItems(defaultItems);
+  };
+
+  // 항목 추가/수정 (API 사용)
+  const handleSubmit = async () => {
     if (!formData.title || !formData.description || !formData.date) {
       alert("제목, 설명, 날짜는 필수 항목입니다.");
       return;
     }
 
-    if (editingItem) {
-      // 수정
-      const updatedItems = items.map((item) =>
-        item.id === editingItem.id
-          ? { ...formData, id: editingItem.id }
-          : item
-      );
-      setItems(updatedItems);
-      localStorage.setItem("recruitItems_2025_12", JSON.stringify(updatedItems));
-    } else {
-      // 추가
-      const newItem: Item = {
-        ...formData,
-        id: Date.now(),
-      };
-      const updatedItems = [...items, newItem];
-      setItems(updatedItems);
-      localStorage.setItem("recruitItems_2025_12", JSON.stringify(updatedItems));
-    }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert("로그인이 필요합니다.");
+        return;
+      }
 
-    // 폼 초기화
-    setFormData({
-      title: "",
-      description: "",
-      type: "job",
-      date: "",
-      location: "",
-      prize: "",
-      salary: "",
-      company: "",
-      employmentType: "정규직",
-      link: "",
-      thumbnail: "",
-    });
-    setEditingItem(null);
-    setIsDialogOpen(false);
+      const itemData = {
+        title: formData.title,
+        description: formData.description,
+        type: formData.type,
+        date: formData.date,
+        location: formData.location || null,
+        prize: formData.prize || null,
+        salary: formData.salary || null,
+        company: formData.company || null,
+        employment_type: formData.employmentType || null,
+        link: formData.link || null,
+        thumbnail: formData.thumbnail || null,
+      };
+
+      if (editingItem) {
+        // 수정
+        const response = await fetch(`/api/recruit-items/${editingItem.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(itemData),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update item');
+        }
+      } else {
+        // 추가
+        const response = await fetch('/api/recruit-items', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(itemData),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to create item');
+        }
+      }
+
+      // 성공 후 목록 새로고침
+      await loadItems();
+      
+      // 폼 초기화
+      setFormData({
+        title: "",
+        description: "",
+        type: "job",
+        date: "",
+        location: "",
+        prize: "",
+        salary: "",
+        company: "",
+        employmentType: "정규직",
+        link: "",
+        thumbnail: "",
+      });
+      setEditingItem(null);
+      setIsDialogOpen(false);
+      alert(editingItem ? "수정되었습니다." : "추가되었습니다.");
+    } catch (error) {
+      console.error('Error saving item:', error);
+      alert("저장 중 오류가 발생했습니다.");
+    }
   };
 
-  // 항목 삭제
-  const handleDelete = (id: number) => {
-    if (confirm("정말 삭제하시겠습니까?")) {
-      const updatedItems = items.filter((item) => item.id !== id);
-      setItems(updatedItems);
-      localStorage.setItem("recruitItems_2025_12", JSON.stringify(updatedItems));
+  // 항목 삭제 (API 사용)
+  const handleDelete = async (id: number) => {
+    if (!confirm("정말 삭제하시겠습니까?")) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert("로그인이 필요합니다.");
+        return;
+      }
+
+      const response = await fetch(`/api/recruit-items/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete item');
+      }
+
+      // 성공 후 목록 새로고침
+      await loadItems();
+      alert("삭제되었습니다.");
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      alert("삭제 중 오류가 발생했습니다.");
     }
   };
 
