@@ -34,9 +34,9 @@ export async function GET(request: NextRequest) {
 
     // Auth에서 사용자 정보 가져오기
     if (data && data.length > 0) {
-      const userIds = [...new Set(data.map((c: any) => c.user_id).filter(Boolean))];
+      const userIds = Array.from(new Set(data.map((c: any) => c.user_id).filter(Boolean))) as string[];
       
-      const userPromises = userIds.map(async (uid: string) => {
+      const userPromises = userIds.map(async (uid) => {
         try {
           const { data: authData } = await supabaseAdmin.auth.admin.getUserById(uid);
           if (authData.user) {
