@@ -298,9 +298,9 @@ export default function MyPage() {
         .getPublicUrl(filePath);
 
       // 3. DB 업데이트
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ cover_image_url: publicUrl } as any)
+      const { error: updateError } = await (supabase
+        .from('users') as any)
+        .update({ cover_image_url: publicUrl })
         .eq('id', userId);
 
       if (updateError) throw updateError;
