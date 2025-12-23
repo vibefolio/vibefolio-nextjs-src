@@ -78,6 +78,7 @@ export default function TiptapUploadPage() {
   // Editor Instance State
   const [editor, setEditor] = useState<Editor | null>(null);
   const sidebarFileInputRef = useRef<HTMLInputElement>(null);
+  const gridFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -88,6 +89,7 @@ export default function TiptapUploadPage() {
         return;
       }
       setUserId(user.id);
+      // ... (rest of init logic remains same until next hook)
 
       // 로컬스토리지에서 임시 저장된 데이터 복구
       const savedDraft = localStorage.getItem('project_draft');
@@ -273,16 +275,36 @@ export default function TiptapUploadPage() {
     }
   };
 
-  const handleAddVideo = () => {
-    const url = window.prompt('YouTube URL을 입력하세요:');
-    if (url && editor) {
-      editor.commands.setYoutubeVideo({ src: url });
+  // 포토 그리드 핸들러 (다중 파일 업로드)
+  const handleAddGrid = () => {
+    gridFileInputRef.current?.click();
+  };
+
+  const handleGridFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0 && editor) {
+      // Show loading indicator or toast could be good here
+      try {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const url = await uploadImage(file);
+          // Insert images sequentially for now (Layout Grid typically requires a custom node)
+          editor.chain().focus().setImage({ src: url }).run();
+        }
+      } catch (error) {
+        console.error('Grid Image upload failed:', error);
+        alert('이미지 업로드 중 일부가 실패했습니다.');
+      } finally {
+        if (gridFileInputRef.current) gridFileInputRef.current.value = '';
+      }
     }
   };
 
-  const handleAddGrid = () => {
-    // Placeholder for grid
-    editor?.chain().focus().insertContent('<p>[Photo Grid Placeholder]</p>').run();
+  const handleAddVideo = () => {
+    const url = window.prompt('YouTube 또는 Vimeo URL을 입력하세요:');
+    if (url && editor) {
+      editor.commands.setYoutubeVideo({ src: url });
+    }
   };
 
   const handleAddCode = () => {
@@ -565,13 +587,22 @@ export default function TiptapUploadPage() {
              onAddGrid={handleAddGrid}
              onAddCode={handleAddCode}
            />
-           {/* Hidden File Input for Sidebar */}
+           {/* Hidden File Input for Sidebar (Single Image) */}
            <input 
              type="file"
              ref={sidebarFileInputRef}
              className="hidden"
              accept="image/*"
              onChange={handleSidebarFileChange}
+           />
+           {/* Hidden File Input for Sidebar (Grid - Multiple Images) */}
+           <input 
+             type="file"
+             ref={gridFileInputRef}
+             className="hidden"
+             accept="image/*"
+             multiple
+             onChange={handleGridFileChange}
            />
         </div>
 
