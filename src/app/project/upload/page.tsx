@@ -63,7 +63,8 @@ const fieldCategories = [
 
 export default function TiptapUploadPage() {
   const router = useRouter();
-  const [step, setStep] = useState<'info' | 'content'>('info');
+  // Step 1: Content (Editor), Step 2: Info (Settings)
+  const [step, setStep] = useState<'content' | 'info'>('content');
   const [title, setTitle] = useState("");
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
@@ -129,11 +130,11 @@ export default function TiptapUploadPage() {
 
   // 자동 저장 (30초마다)
   useEffect(() => {
-    if (step === 'content' && title) {
+    if (content) {
       const interval = setInterval(() => {
         const draft = {
           title,
-          content, // Content is updated via onChange from TiptapEditor
+          content, 
           genres: selectedGenres,
           fields: selectedFields,
           savedAt: new Date().toISOString(),
@@ -144,7 +145,7 @@ export default function TiptapUploadPage() {
 
       return () => clearInterval(interval);
     }
-  }, [step, title, content, selectedGenres, selectedFields]);
+  }, [title, content, selectedGenres, selectedFields]);
 
   const handleCoverImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -174,7 +175,23 @@ export default function TiptapUploadPage() {
     );
   };
 
-  const handleNext = () => {
+  // Step 1 -> Step 2
+  const handleContinue = () => {
+    const currentContent = editor ? editor.getHTML() : content;
+    if (!currentContent || currentContent === '<p></p>') {
+      alert('프로젝트 내용을 작성해주세요.');
+      return;
+    }
+    // Update local content state to match editor
+    setContent(currentContent);
+    setStep('info');
+    window.scrollTo(0, 0); // Scroll to top for settings page
+  };
+
+  // Step 2 -> Submit
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+
     if (!title.trim()) {
       alert('프로젝트 제목을 입력해주세요.');
       return;
@@ -185,19 +202,6 @@ export default function TiptapUploadPage() {
     }
     if (selectedGenres.length === 0) {
       alert('최소 1개의 장르를 선택해주세요.');
-      return;
-    }
-    setStep('content');
-  };
-
-  const handleSubmit = async () => {
-    if (isSubmitting) return;
-    
-    // Get latest content from editor if available, otherwise use state content
-    const finalContent = editor ? editor.getHTML() : content;
-
-    if (!finalContent || finalContent === '<p></p>') {
-      alert('프로젝트 내용을 작성해주세요.');
       return;
     }
 
@@ -219,7 +223,7 @@ export default function TiptapUploadPage() {
           user_id: userId,
           category_id,
           title,
-          content_text: finalContent, // Tiptap HTML content
+          content_text: content, // Tiptap HTML content
           thumbnail_url: coverUrl,
           rendering_type: 'rich_text', // Tiptap 렌더링 타입
           custom_data: JSON.stringify({
@@ -288,85 +292,120 @@ export default function TiptapUploadPage() {
 
   if (step === 'info') {
     return (
-      <div className="w-full min-h-screen bg-gradient-to-br from-slate-50 via-white to-green-50 py-12 px-4">
-        {/* Info Step Content (Same as before) */}
-        <div className="max-w-5xl mx-auto">
-          <div className="mb-8">
+      <div className="w-full min-h-screen bg-gradient-to-br from-slate-50 via-white to-green-50 py-12 px-4 transition-all duration-500 ease-in-out animate-in fade-in slide-in-from-bottom-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8 flex items-center justify-between">
             <button
-              onClick={() => router.push('/')}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors group"
+              onClick={() => setStep('content')}
+              className="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors group px-4 py-2 rounded-lg hover:bg-gray-100"
             >
               <FontAwesomeIcon icon={faArrowLeft} className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-              <span className="text-sm font-medium">돌아가기</span>
+              <span className="text-sm font-medium">에디터로 돌아가기</span>
             </button>
-            <h1 className="text-5xl font-black text-gray-900 mb-3 bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-              새 프로젝트 만들기
-            </h1>
-            <p className="text-lg text-gray-600">
-              당신의 창작물을 세상과 공유하세요 ✨
-            </p>
+            <div className="text-right">
+               <h1 className="text-3xl font-black text-gray-900 bg-clip-text text-transparent bg-gradient-to-r from-green-600 to-teal-600">
+                발행 설정
+               </h1>
+               <p className="text-sm text-gray-500 mt-1">프로젝트의 마지막 디테일을 채워주세요</p>
+            </div>
           </div>
 
-          <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-8 md:p-12 space-y-8">
+          <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-8 md:p-12 space-y-10">
             {/* 커버 이미지 */}
-            <div className="space-y-3">
-              <label className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-500"></span>
+            <div className="space-y-4">
+              <label className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 커버 이미지
+                <span className="text-xs font-normal text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-100">필수</span>
               </label>
-              <p className="text-sm text-gray-500">프로젝트를 대표하는 이미지를 선택하세요</p>
-              {coverPreview ? (
-                <div className="relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-gray-200 group">
-                  <img src={coverPreview} alt="Cover" className="w-full h-full object-cover" />
-                  <button
-                    onClick={() => {
-                      setCoverImage(null);
-                      setCoverPreview(null);
-                    }}
-                    className="absolute top-4 right-4 p-3 bg-black/60 hover:bg-black/80 rounded-full text-white transition-all opacity-0 group-hover:opacity-100"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center w-full aspect-video border-2 border-dashed border-gray-300 rounded-2xl cursor-pointer hover:border-green-500 hover:bg-green-50/30 transition-all group">
-                  <div className="flex flex-col items-center">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                      <FontAwesomeIcon icon={faCamera} className="w-10 h-10 text-green-600" />
+              
+              <div className="flex gap-8 items-start">
+                 {/* Preview Area */}
+                 <div className="flex-1">
+                   {coverPreview ? (
+                    <div className="relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-gray-100 shadow-md group">
+                      <img src={coverPreview} alt="Cover" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                         <button
+                           onClick={() => {
+                             setCoverImage(null);
+                             setCoverPreview(null);
+                           }}
+                           className="px-4 py-2 bg-white/20 hover:bg-white/40 text-white rounded-lg backdrop-blur-sm transition-colors text-sm font-medium"
+                         >
+                           제거
+                         </button>
+                         <label htmlFor="change-cover" className="px-4 py-2 bg-white text-gray-900 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors text-sm font-medium">
+                           변경
+                         </label>
+                      </div>
                     </div>
-                    <p className="text-lg font-semibold text-gray-700 mb-1">이미지 업로드</p>
-                    <p className="text-sm text-gray-500">PNG, JPG, GIF (최대 10MB)</p>
-                  </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center w-full aspect-video border-2 border-dashed border-gray-300 rounded-2xl cursor-pointer hover:border-green-500 hover:bg-green-50/10 transition-all group bg-gray-50/50">
+                      <div className="flex flex-col items-center">
+                        <div className="w-16 h-16 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:shadow-md transition-all">
+                          <FontAwesomeIcon icon={faCamera} className="w-6 h-6 text-gray-400 group-hover:text-green-500" />
+                        </div>
+                        <p className="text-lg font-semibold text-gray-600 group-hover:text-green-600 transition-colors">클릭하여 이미지 업로드</p>
+                        <p className="text-sm text-gray-400 mt-1">1280x720 권장 (최대 10MB)</p>
+                      </div>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleCoverImageChange}
+                      />
+                    </label>
+                  )}
+                  {/* Hidden input for 'Change' button */}
                   <input
+                    id="change-cover"
                     type="file"
                     className="hidden"
                     accept="image/*"
                     onChange={handleCoverImageChange}
                   />
-                </label>
-              )}
+                 </div>
+                 
+                 {/* Side Info */}
+                 <div className="w-1/3 text-sm text-gray-500 space-y-4 pt-2">
+                    <p>
+                       매력적인 커버 이미지는 조회수를 높이는 가장 좋은 방법입니다. 
+                       프로젝트의 핵심을 잘 보여주는 고화질 이미지를 선택하세요.
+                    </p>
+                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                       <h4 className="font-semibold text-gray-700 mb-2">팁</h4>
+                       <ul className="space-y-1 list-disc list-inside text-gray-500 text-xs">
+                          <li>텍스트가 너무 많지 않은 이미지</li>
+                          <li>16:9 비율이 가장 좋습니다</li>
+                          <li>애니메이션(GIF)도 지원합니다</li>
+                       </ul>
+                    </div>
+                 </div>
+              </div>
             </div>
+
+            <div className="w-full h-px bg-gray-100"></div>
 
             {/* 제목 */}
             <div className="space-y-3">
-              <label className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-500"></span>
+              <label className="text-xl font-bold text-gray-900">
                 프로젝트 제목
+                <span className="text-red-500 ml-1">*</span>
               </label>
               <Input
                 type="text"
-                placeholder="예: AI로 만든 판타지 일러스트 시리즈"
+                placeholder="멋진 프로젝트의 이름을 지어주세요"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="text-lg h-14 border-2 border-gray-200 focus:border-green-500 rounded-xl transition-all"
+                className="text-2xl h-16 px-6 font-bold border-2 border-gray-200 focus:border-green-500 rounded-xl transition-all placeholder:font-normal placeholder:text-gray-300"
               />
             </div>
 
             {/* 장르 */}
-            <div className="space-y-3">
-              <label className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                장르 <span className="text-red-500 ml-1">*</span>
+            <div className="space-y-4">
+              <label className="text-xl font-bold text-gray-900">
+                작품 장르
+                <span className="text-sm font-normal text-gray-400 ml-2">최대 3개까지 선택 가능</span>
               </label>
               <div className="flex flex-wrap gap-3">
                 {genreCategories.map((genre) => {
@@ -376,15 +415,17 @@ export default function TiptapUploadPage() {
                       key={genre.id}
                       type="button"
                       onClick={() => toggleGenre(genre.id)}
-                      className={`flex items-center gap-2 px-5 py-3 rounded-full border-2 transition-all font-medium ${
+                      className={`flex items-center gap-2 px-5 py-3 rounded-xl border-2 transition-all font-medium relative overflow-hidden ${
                         isSelected
-                          ? "bg-gradient-to-r from-green-500 to-emerald-500 border-green-500 text-white shadow-lg shadow-green-200 scale-105"
-                          : "bg-white border-gray-200 text-gray-700 hover:border-green-400 hover:shadow-md hover:scale-105"
+                          ? "bg-green-50 border-green-500 text-green-700 shadow-sm"
+                          : "bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
                       }`}
                     >
-                      <FontAwesomeIcon icon={genre.icon} className="w-4 h-4" />
+                      <FontAwesomeIcon icon={genre.icon} className={isSelected ? "text-green-600" : "text-gray-400"} />
                       <span>{genre.label}</span>
-                      {isSelected && <FontAwesomeIcon icon={faCheck} className="w-3 h-3" />}
+                      {isSelected && (
+                         <div className="absolute top-0 right-0 w-3 h-3 bg-green-500 rounded-bl-lg"></div>
+                      )}
                     </button>
                   );
                 })}
@@ -392,10 +433,10 @@ export default function TiptapUploadPage() {
             </div>
 
             {/* 산업 분야 */}
-            <div className="space-y-3">
-              <label className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                관련 산업 분야 <span className="text-sm font-normal text-gray-500">(선택)</span>
+            <div className="space-y-4">
+              <label className="text-xl font-bold text-gray-900">
+                관련 분야
+                <span className="text-sm font-normal text-gray-400 ml-2">(선택)</span>
               </label>
               <div className="flex flex-wrap gap-2">
                 {fieldCategories.map((field) => {
@@ -405,10 +446,10 @@ export default function TiptapUploadPage() {
                       key={field.id}
                       type="button"
                       onClick={() => toggleField(field.id)}
-                      className={`px-4 py-2 rounded-full border-2 transition-all text-sm font-medium ${
+                      className={`px-4 py-2 rounded-lg border transition-all text-sm font-medium ${
                         isSelected
-                          ? "bg-indigo-500 border-indigo-500 text-white shadow-md"
-                          : "bg-white border-gray-200 text-gray-700 hover:border-indigo-400"
+                          ? "bg-gray-800 border-gray-800 text-white"
+                          : "bg-white border-gray-200 text-gray-600 hover:border-gray-400"
                       }`}
                     >
                       {field.label}
@@ -418,13 +459,32 @@ export default function TiptapUploadPage() {
               </div>
             </div>
 
-            {/* 다음 버튼 */}
-            <div className="pt-6">
+            <div className="w-full h-px bg-gray-100 my-8"></div>
+
+            {/* 발행 버튼 */}
+            <div className="flex justify-end gap-4">
+               <button
+                  onClick={() => setStep('content')}
+                  className="px-8 py-4 text-gray-600 font-medium hover:bg-gray-100 rounded-xl transition-colors"
+               >
+                 취소
+               </button>
               <Button
-                onClick={handleNext}
-                className="w-full h-16 text-lg font-bold bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white rounded-xl shadow-xl hover:shadow-2xl transition-all transform hover:scale-[1.02]"
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="h-16 px-12 text-lg font-bold bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all"
               >
-                다음: 콘텐츠 작성하기 →
+                {isSubmitting ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    발행 중...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <FontAwesomeIcon icon={faUpload} className="w-5 h-5" />
+                    프로젝트 발행하기
+                  </span>
+                )}
               </Button>
             </div>
           </div>
@@ -433,7 +493,7 @@ export default function TiptapUploadPage() {
     );
   }
 
-  // Content Step with Behance-style Layout
+  // Content Step
   return (
     <div className="w-full min-h-screen bg-gray-50/50">
       {/* Fixed Header */}
@@ -441,15 +501,22 @@ export default function TiptapUploadPage() {
         <div className="max-w-[1600px] mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => setStep('info')}
+              onClick={() => router.push('/')}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
             >
               <FontAwesomeIcon icon={faArrowLeft} className="w-5 h-5" />
             </button>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">{title}</h2>
-              <p className="text-xs text-gray-500">
-                {lastSaved && `저장됨: ${lastSaved.toLocaleTimeString('ko-KR')}`}
+              <h2 className="text-lg font-bold text-gray-900">{title || "새 프로젝트"}</h2>
+              <p className="text-xs text-gray-500 flex items-center gap-1">
+                 {lastSaved ? (
+                    <>
+                       <FontAwesomeIcon icon={faCheck} className="w-3 h-3 text-green-500" />
+                       <span className="text-green-600">저장됨</span>
+                       <span className="text-gray-300">|</span>
+                       <span>{lastSaved.toLocaleTimeString('ko-KR')}</span>
+                    </>
+                 ) : "작성 중..."}
               </p>
             </div>
           </div>
@@ -458,19 +525,19 @@ export default function TiptapUploadPage() {
               variant="ghost"
               className="text-gray-500 hover:text-gray-900"
               onClick={() => {
-                const draft = { title, content, genres: selectedGenres, fields: selectedFields, savedAt: new Date().toISOString() };
+                const draft = { title, content: editor?.getHTML() || content, genres: selectedGenres, fields: selectedFields, savedAt: new Date().toISOString() };
                 localStorage.setItem('project_draft', JSON.stringify(draft));
+                setLastSaved(new Date());
                 alert('임시 저장되었습니다.');
               }}
              >
-               저장
+               임시 저장
              </Button>
             <Button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
+              onClick={handleContinue}
               className="bg-green-600 hover:bg-green-700 text-white px-8 h-10 rounded-full font-bold shadow-md transition-all hover:scale-105"
             >
-              {isSubmitting ? '발행 중...' : '계속'}
+              계속하기 →
             </Button>
           </div>
         </div>
