@@ -251,6 +251,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setUser(newSession.user);
               await loadUserProfile(newSession.user);
               updateLastActivity();
+              localStorage.setItem("lastActivity", Date.now().toString()); // Persist activity time
               localStorage.setItem("isLoggedIn", "true");
             }
             break;
