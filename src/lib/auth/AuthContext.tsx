@@ -192,11 +192,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(currentSession.user);
           await loadUserProfile(currentSession.user);
           
+          // 마지막 로그인 시간 확인
+          const lastSignIn = new Date(currentSession.user.last_sign_in_at || 0).getTime();
+          const now = Date.now();
+          const isRecentlySignedIn = now - lastSignIn < 5 * 60 * 1000; // 5분 이내 로그인
+
           // 마지막 활동 시간 복원 또는 현재 시간으로 설정
           const savedActivity = localStorage.getItem("lastActivity");
-          if (savedActivity) {
+          
+          if (isRecentlySignedIn) {
+             // 최근에 로그인했다면 활동 시간 리셋 (리다이렉트 이슈 해결)
+             lastActivityRef.current = now;
+             localStorage.setItem("lastActivity", now.toString());
+          } else if (savedActivity) {
             const savedTime = parseInt(savedActivity, 10);
-            const timeSince = Date.now() - savedTime;
+            const timeSince = now - savedTime;
             
             // 저장된 활동 시간이 타임아웃을 초과했으면 로그아웃
             if (timeSince >= SESSION_TIMEOUT) {
@@ -207,8 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
             lastActivityRef.current = savedTime;
           } else {
-            // 저장된 활동 시간이 없으면 현재 시간으로 설정 (새로고침 시)
-            const now = Date.now();
+            // 저장된 활동 시간이 없으면 현재 시간으로 설정
             lastActivityRef.current = now;
             localStorage.setItem("lastActivity", now.toString());
           }
@@ -283,15 +292,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [loadUserProfile, signOut, updateLastActivity]);
 
-  // 활동 감지 이벤트 리스너
+  // 활동 감지 이벤트 리스너 with throttling
   useEffect(() => {
     if (!user) return;
 
     const activityEvents = ["mousedown", "keydown", "scroll", "touchstart"];
+    let throttleTimeout: NodeJS.Timeout | null = null;
     
     const handleActivity = () => {
-      updateLastActivity();
-      localStorage.setItem("lastActivity", Date.now().toString());
+      if (!throttleTimeout) {
+        throttleTimeout = setTimeout(() => {
+          updateLastActivity();
+          localStorage.setItem("lastActivity", Date.now().toString());
+          throttleTimeout = null;
+        }, 5000); // 5초마다 업데이트
+      }
     };
 
     activityEvents.forEach((event) => {
@@ -307,6 +322,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       if (checkIntervalRef.current) {
         clearInterval(checkIntervalRef.current);
+      }
+      if (throttleTimeout) {
+        clearTimeout(throttleTimeout);
       }
     };
   }, [user, updateLastActivity, checkInactivity]);
