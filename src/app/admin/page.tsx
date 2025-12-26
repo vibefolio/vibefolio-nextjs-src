@@ -52,11 +52,13 @@ export default function AdminPage() {
     }
   }, [isAdmin, isAdminLoading, router]);
 
-  // 통계 및 최근 데이터 로드
+  // 통계 및 최근 데이터 로드 (CSR 안전)
   useEffect(() => {
-    const loadStats = async () => {
-      if (!isAdmin) return;
+    // 클라이언트 사이드에서만 실행
+    if (typeof window === 'undefined') return;
+    if (!isAdmin) return;
 
+    const loadStats = async () => {
       setIsLoadingStats(true);
       try {
         // 프로젝트 수
@@ -99,9 +101,15 @@ export default function AdminPage() {
           .order('created_at', { ascending: false })
           .limit(5);
 
-        // 로컬스토리지 데이터 (채용, 배너) - 채용과 배너는 아직 DB화 안됨?
-        const recruitItems = JSON.parse(localStorage.getItem("recruitItems") || "[]");
-        const banners = JSON.parse(localStorage.getItem("banners") || "[]");
+        // 로컬스토리지 데이터 (CSR 안전) - 채용과 배너
+        let recruitItems: any[] = [];
+        let banners: any[] = [];
+        try {
+          recruitItems = JSON.parse(localStorage.getItem("recruitItems") || "[]");
+          banners = JSON.parse(localStorage.getItem("banners") || "[]");
+        } catch (e) {
+          console.warn("localStorage 접근 실패:", e);
+        }
 
         // 최근 문의
         const { data: recentInqs } = await supabase

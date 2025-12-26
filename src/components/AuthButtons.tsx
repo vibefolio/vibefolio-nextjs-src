@@ -15,16 +15,21 @@ import { useRouter } from "next/navigation";
 import { User, Upload, LogOut, Shield } from 'lucide-react';
 import { OnboardingModal } from "./OnboardingModal";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { supabase } from "@/lib/supabase/client";
 
 export function AuthButtons() {
   const router = useRouter();
   const { user, userProfile, loading, signOut, isAuthenticated, isAdmin } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // 온보딩 상태 확인
+  // 클라이언트 마운트 상태 추적 (하이드레이션 안전)
   useEffect(() => {
-    if (!user) {
+    setMounted(true);
+  }, []);
+
+  // 온보딩 상태 확인 - mounted 상태에서만 localStorage 접근
+  useEffect(() => {
+    if (!mounted || !user) {
       setShowOnboarding(false);
       return;
     }
@@ -38,7 +43,7 @@ export function AuthButtons() {
     } else {
       setShowOnboarding(false);
     }
-  }, [user]);
+  }, [user, mounted]);
 
   const handleLogout = async () => {
     await signOut();
@@ -49,8 +54,8 @@ export function AuthButtons() {
     router.refresh();
   };
 
-  // 로딩 중일 때 스켈레톤 표시
-  if (loading) {
+  // 로딩 중이거나 마운트되지 않았을 때 스켈레톤 표시
+  if (!mounted || loading) {
     return (
       <div className="flex items-center gap-2">
         <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse" />

@@ -1,9 +1,15 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { User, Session, AuthChangeEvent } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+
+interface UserProfile {
+  nickname: string;
+  profile_image_url: string;
+  role: string;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -11,11 +17,7 @@ interface AuthContextType {
   loading: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
-  userProfile: {
-    nickname: string;
-    profile_image_url: string;
-    role?: string;
-  } | null;
+  userProfile: UserProfile | null;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
   refreshUserProfile: () => Promise<void>;
@@ -23,58 +25,30 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// SSR 안전: mounted 상태 확인용
+function useIsMounted() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  return mounted;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const isMounted = useIsMounted();
+  
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState<AuthContextType["userProfile"]>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-
-  // 로그아웃 함수
-  const signOut = useCallback(async () => {
-    try {
-      setUser(null);
-      setSession(null);
-      setUserProfile(null);
-      setIsAdmin(false);
-      localStorage.removeItem("isLoggedIn");
-      
-      await supabase.auth.signOut();
-      router.push("/");
-      router.refresh(); // 강제 새로고침으로 상태 초기화 보장
-    } catch (error) {
-      console.error("로그아웃 오류:", error);
-      router.push("/");
-    }
-  }, [router]);
-
-  // 세션 새로고침
-  const refreshSession = useCallback(async () => {
-    try {
-      const { data: { session: newSession }, error } = await supabase.auth.refreshSession();
-      if (error) {
-        console.error("세션 새로고침 실패:", error);
-        // 리프레시 토큰 만료 등의 경우 로그아웃 처리
-        // 하지만 네트워크 오류일 수 있으므로 신중해야 함
-        if (error.message.includes("refresh_token_not_found") || error.message.includes("invalid")) {
-           await signOut();
-        }
-        return;
-      }
-      if (newSession) {
-        setSession(newSession);
-        setUser(newSession.user);
-        // 세션이 갱신되었으므로 프로필도 다시 로드 시도
-        // loadUserProfile(newSession.user); // 무한 루프 방지를 위해 호출 제외
-      }
-    } catch (error) {
-      console.error("세션 새로고침 오류:", error);
-    }
-  }, [signOut]);
+  
+  // 초기화 완료 여부 추적
+  const initializationRef = useRef(false);
 
   // 프로필 정보 로드
-  const loadUserProfile = useCallback(async (currentUser: User) => {
+  const loadUserProfile = useCallback(async (currentUser: User): Promise<UserProfile> => {
     try {
       console.log("[Auth] Loading profile for:", currentUser.email);
       
@@ -92,18 +66,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       let newNickname = metadata?.nickname || currentUser.email?.split("@")[0] || "사용자";
       let newImage = metadata?.profile_image_url || metadata?.avatar_url || "/globe.svg";
 
-      if (userError) {
-        console.warn("[Auth] DB 조회 실패 (기본값 사용):", userError.message);
-        // 에러 발생 시, 기존 프로필이 있다면 유지, 없다면 기본값 사용.
-        // 여기서는 일단 기본값을 사용하지만, 역할은 'user'로 떨어질 수 있음 주의.
-      } else if (userData) {
+      if (!userError && userData) {
         const typedData = userData as { role?: string; nickname?: string; profile_image_url?: string };
         newRole = typedData.role || "user";
         if (typedData.nickname) newNickname = typedData.nickname;
         if (typedData.profile_image_url) newImage = typedData.profile_image_url;
+      } else if (userError) {
+        console.warn("[Auth] DB 조회 실패 (기본값 사용):", userError.message);
       }
       
-      const newProfile = {
+      const newProfile: UserProfile = {
         nickname: newNickname,
         profile_image_url: newImage,
         role: newRole,
@@ -115,127 +87,199 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAdmin: newRole === 'admin' 
       });
 
-      setUserProfile(newProfile);
-      setIsAdmin(newRole === 'admin');
+      return newProfile;
 
     } catch (error) {
       console.error("[Auth] 프로필 로드 치명적 오류:", error);
-      // 치명적 오류 시 안전하게 기본값 처리
-       setUserProfile({
+      return {
         nickname: currentUser.email?.split("@")[0] || "사용자",
         profile_image_url: "/globe.svg",
         role: "user",
-      });
-      setIsAdmin(false);
+      };
     }
   }, []);
+
+  // 상태 업데이트 함수 (동기화 보장)
+  const updateAuthState = useCallback((
+    newSession: Session | null, 
+    newUser: User | null, 
+    newProfile: UserProfile | null
+  ) => {
+    setSession(newSession);
+    setUser(newUser);
+    setUserProfile(newProfile);
+    setIsAdmin(newProfile?.role === 'admin');
+    setLoading(false);
+  }, []);
+
+  // 로그아웃 함수
+  const signOut = useCallback(async () => {
+    try {
+      // 즉시 상태 초기화
+      updateAuthState(null, null, null);
+      
+      // localStorage 정리 (클라이언트에서만)
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem("isLoggedIn");
+      }
+      
+      await supabase.auth.signOut();
+      router.push("/");
+      router.refresh();
+    } catch (error) {
+      console.error("로그아웃 오류:", error);
+      router.push("/");
+    }
+  }, [router, updateAuthState]);
+
+  // 세션 새로고침
+  const refreshSession = useCallback(async () => {
+    try {
+      const { data: { session: newSession }, error } = await supabase.auth.refreshSession();
+      if (error) {
+        console.error("세션 새로고침 실패:", error);
+        if (error.message.includes("refresh_token_not_found") || error.message.includes("invalid")) {
+          await signOut();
+        }
+        return;
+      }
+      if (newSession) {
+        const profile = await loadUserProfile(newSession.user);
+        updateAuthState(newSession, newSession.user, profile);
+      }
+    } catch (error) {
+      console.error("세션 새로고침 오류:", error);
+    }
+  }, [signOut, loadUserProfile, updateAuthState]);
 
   // 외부에서 호출 가능한 프로필 새로고침 함수
   const refreshUserProfile = useCallback(async () => {
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (currentUser) {
-        await loadUserProfile(currentUser);
+        const profile = await loadUserProfile(currentUser);
+        setUserProfile(profile);
+        setIsAdmin(profile.role === 'admin');
       }
     } catch (e) {
       console.error("프로필 새로고침 실패:", e);
     }
   }, [loadUserProfile]);
 
-  // 초기 세션 확인 및 인증 상태 변경 구독
+  // 초기화 및 인증 상태 변경 구독
   useEffect(() => {
-    let isMounted = true;
+    // 이미 초기화 되었으면 무시 (StrictMode 대응)
+    if (initializationRef.current) return;
+    initializationRef.current = true;
+
+    let isActive = true;
 
     const initializeAuth = async () => {
       try {
-        console.log("[Auth] 초기화 체크 시작");
+        console.log("[Auth] 초기화 시작");
         
-        // 5초 타임아웃 안전장치
-        const timeoutPromise = new Promise<{ data: { session: Session | null }; error: any }>((_, reject) => 
-          setTimeout(() => reject(new Error("Auth Initialization Timeout")), 5000)
-        );
+        // 타임아웃 설정 (5초)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-        // 1. getSession으로 현재 세션 확인 (타임아웃 적용)
-        const { data: { session: currentSession }, error } = await Promise.race([
-          supabase.auth.getSession(),
-          timeoutPromise
-        ]);
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        clearTimeout(timeoutId);
         
+        if (!isActive) return;
+
         if (error) {
           console.error("[Auth] 세션 확인 오류:", error);
-          // 에러 발생 시에도 로딩 해제를 위해 finally로 넘어감
+          updateAuthState(null, null, null);
           return;
         }
 
-        if (currentSession && isMounted) {
-          console.log("[Auth] 세션 존재함 (getSession):", currentSession.user.email);
-          setSession(currentSession);
-          setUser(currentSession.user);
-          // 프로필 로드는 비동기로 진행하되, 로딩 상태는 프로필 로드 완료 후 해제하거나
-          // 사용자 경험을 위해 일단 로그인은 된 상태로 두고 백그라운드에서 로드할 수도 있음.
-          await loadUserProfile(currentSession.user);
-          localStorage.setItem("isLoggedIn", "true");
+        if (currentSession) {
+          console.log("[Auth] 세션 존재함:", currentSession.user.email);
+          const profile = await loadUserProfile(currentSession.user);
+          
+          if (!isActive) return;
+          
+          updateAuthState(currentSession, currentSession.user, profile);
+          
+          // localStorage 업데이트 (클라이언트에서만)
+          if (typeof window !== 'undefined') {
+            localStorage.setItem("isLoggedIn", "true");
+          }
         } else {
-          console.log("[Auth] 세션 없음 (getSession)");
-          // 세션이 없으면 로딩 해제 (비로그인 상태)
+          console.log("[Auth] 세션 없음");
+          updateAuthState(null, null, null);
         }
 
       } catch (error) {
-        console.error("[Auth] 초기화 예외 발생:", error);
-        // 타임아웃 등의 에러 발생 시 비로그인 상태로 간주
-        if (error instanceof Error && error.message === "Auth Initialization Timeout") {
-           console.warn("[Auth] 초기화 시간 초과 - 강제 로딩 해제");
+        console.error("[Auth] 초기화 예외:", error);
+        if (isActive) {
+          updateAuthState(null, null, null);
         }
-      } finally {
-        if (isMounted) setLoading(false);
       }
     };
 
     // 초기화 실행
     initializeAuth();
 
-    // 2. onAuthStateChange 구독
+    // onAuthStateChange 구독
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, newSession: Session | null) => {
-        if (!isMounted) return;
+        if (!isActive) return;
 
-        console.log(`[Auth] 상태 변경 이벤트: ${event}`, newSession?.user?.email);
+        console.log(`[Auth] 상태 변경: ${event}`, newSession?.user?.email);
 
-        if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
-          if (newSession) {
-            setSession(newSession);
-            setUser(newSession.user);
-            await loadUserProfile(newSession.user);
-            localStorage.setItem("isLoggedIn", "true");
-            setLoading(false); // 세션이 들어왔으니 로딩 해제
-          }
-        } else if (event === "SIGNED_OUT") {
-          console.log("[Auth] 로그아웃됨");
-          setSession(null);
-          setUser(null);
-          setUserProfile(null);
-          setIsAdmin(false);
-          localStorage.removeItem("isLoggedIn");
-          setLoading(false);
-        } else if (event === "USER_UPDATED" && newSession?.user) {
-          setUser(newSession.user);
-          await loadUserProfile(newSession.user);
+        switch (event) {
+          case "SIGNED_IN":
+          case "TOKEN_REFRESHED":
+            if (newSession) {
+              const profile = await loadUserProfile(newSession.user);
+              if (isActive) {
+                updateAuthState(newSession, newSession.user, profile);
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem("isLoggedIn", "true");
+                }
+              }
+            }
+            break;
+
+          case "SIGNED_OUT":
+            console.log("[Auth] 로그아웃됨");
+            if (isActive) {
+              updateAuthState(null, null, null);
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem("isLoggedIn");
+              }
+            }
+            break;
+
+          case "USER_UPDATED":
+            if (newSession?.user && isActive) {
+              const profile = await loadUserProfile(newSession.user);
+              setUser(newSession.user);
+              setUserProfile(profile);
+              setIsAdmin(profile.role === 'admin');
+            }
+            break;
+            
+          case "INITIAL_SESSION":
+            // 이미 initializeAuth에서 처리됨
+            break;
         }
       }
     );
 
     return () => {
-      isMounted = false;
+      isActive = false;
       subscription.unsubscribe();
     };
-  }, [loadUserProfile]);
+  }, [loadUserProfile, updateAuthState]);
 
   const value: AuthContextType = {
     user,
     session,
-    loading,
+    loading: !isMounted || loading, // 마운트되지 않았으면 로딩 상태 유지
     isAuthenticated: !!user && !!session,
-    isAdmin, // 별도 state 사용
+    isAdmin,
     userProfile,
     signOut,
     refreshSession,

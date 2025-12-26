@@ -10,7 +10,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -26,10 +25,18 @@ interface Popup {
 export function PopupModal() {
   const [popup, setPopup] = useState<Popup | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
+  // 클라이언트 마운트 상태 추적 (하이드레이션 안전)
   useEffect(() => {
-    loadPopup();
+    setMounted(true);
   }, []);
+
+  // 팝업 로드 - mounted 상태에서만 실행
+  useEffect(() => {
+    if (!mounted) return;
+    loadPopup();
+  }, [mounted]);
 
   const loadPopup = async () => {
     try {
@@ -48,7 +55,7 @@ export function PopupModal() {
       }
 
       if (data) {
-        // 쿠키 확인: 오늘 하루 보지 않기
+        // localStorage 확인: 오늘 하루 보지 않기
         const hideUntil = localStorage.getItem(`popup_hide_${data.id}`);
         if (hideUntil) {
           const hideDate = new Date(hideUntil);
@@ -80,7 +87,8 @@ export function PopupModal() {
     setIsOpen(false);
   };
 
-  if (!popup) return null;
+  // 마운트되지 않았거나 팝업이 없으면 렌더링하지 않음
+  if (!mounted || !popup) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
