@@ -2,16 +2,21 @@
 
 import { AuthProvider } from "@/lib/auth/AuthContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { ToastProvider } from "@/components/Toast";
+import { QueryProvider } from "@/providers/QueryProvider";
+import { ThemeProvider } from "@/providers/ThemeProvider";
+import { ToastProvider } from "@/providers/ToastProvider";
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
   return (
-    <ToastProvider>
-      <AuthProvider>
-        <TooltipProvider>
-          {children}
-        </TooltipProvider>
-      </AuthProvider>
-    </ToastProvider>
+    <QueryProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            {children}
+            <ToastProvider />
+          </TooltipProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </QueryProvider>
   );
 }

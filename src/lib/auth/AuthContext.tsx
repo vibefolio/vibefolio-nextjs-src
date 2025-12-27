@@ -5,6 +5,9 @@ import { User, Session, AuthChangeEvent } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
+// 30분 세션 타임아웃 (밀리초)
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+
 interface UserProfile {
   nickname: string;
   profile_image_url: string;
@@ -44,6 +47,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // ====== 30분 세션 타임아웃 체크 ======
+  const checkSessionTimeout = useCallback((): boolean => {
+    if (typeof window === 'undefined') return false;
+    
+    const loginTimestamp = localStorage.getItem('loginTimestamp');
+    if (!loginTimestamp) return false;
+    
+    const loginTime = parseInt(loginTimestamp, 10);
+    const now = Date.now();
+    const elapsed = now - loginTime;
+    
+    if (elapsed > SESSION_TIMEOUT_MS) {
+      console.log("[Auth] 30분 세션 타임아웃 - 자동 로그아웃");
+      return true; // 타임아웃됨
+    }
+    
+    return false; // 아직 유효
+  }, []);
+
+  // ====== localStorage에서 캐시된 역할 정보 가져오기 (관리자 메뉴 안정화) ======
+  const getCachedRole = useCallback((): string | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const cached = localStorage.getItem('userRole');
+      return cached;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // ====== 역할 정보 캐시 저장 ======
+  const setCachedRole = useCallback((role: string) => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('userRole', role);
+    } catch (e) {
+      console.warn("[Auth] 역할 캐시 저장 실패:", e);
+    }
+  }, []);
+
   // 프로필 정보 로드
   const loadUserProfile = useCallback(async (currentUser: User): Promise<UserProfile> => {
     try {
@@ -70,7 +113,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (typedData.profile_image_url) newImage = typedData.profile_image_url;
       } else if (userError) {
         console.warn("[Auth] DB 조회 실패 (기본값 사용):", userError.message);
+        // 캐시된 역할 사용
+        const cachedRole = getCachedRole();
+        if (cachedRole) {
+          newRole = cachedRole;
+          console.log("[Auth] 캐시된 역할 사용:", cachedRole);
+        }
       }
+      
+      // 역할 캐시 저장 (관리자 메뉴 안정화)
+      setCachedRole(newRole);
       
       const newProfile: UserProfile = {
         nickname: newNickname,
@@ -88,13 +140,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     } catch (error) {
       console.error("[Auth] 프로필 로드 치명적 오류:", error);
+      // 캐시된 역할 확인
+      const cachedRole = getCachedRole();
       return {
         nickname: currentUser.email?.split("@")[0] || "사용자",
         profile_image_url: "/globe.svg",
-        role: "user",
+        role: cachedRole || "user",
       };
     }
-  }, []);
+  }, [getCachedRole, setCachedRole]);
 
   // 상태 업데이트 함수 (동기화 보장)
   const updateAuthState = useCallback((
@@ -107,6 +161,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUserProfile(newProfile);
     setIsAdmin(newProfile?.role === 'admin');
     setLoading(false);
+    
+    // 로그인 시 타임스탬프 저장
+    if (typeof window !== 'undefined') {
+      if (newSession && newUser) {
+        // 기존 타임스탬프가 없을 때만 저장 (새로 로그인한 경우)
+        if (!localStorage.getItem('loginTimestamp')) {
+          localStorage.setItem('loginTimestamp', Date.now().toString());
+        }
+      } else {
+        // 로그아웃 시 타임스탬프 제거
+        localStorage.removeItem('loginTimestamp');
+        localStorage.removeItem('userRole');
+      }
+    }
   }, []);
 
   // 로그아웃 함수
@@ -118,6 +186,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // localStorage 정리 (클라이언트에서만)
       if (typeof window !== 'undefined') {
         localStorage.removeItem("isLoggedIn");
+        localStorage.removeItem("loginTimestamp");
+        localStorage.removeItem("userRole");
       }
       
       await supabase.auth.signOut();
@@ -177,6 +247,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         console.log("[Auth] 초기화 시작");
         
+        // ====== 30분 타임아웃 체크 ======
+        if (checkSessionTimeout()) {
+          console.log("[Auth] 세션 만료 - 로그아웃 처리");
+          localStorage.removeItem("isLoggedIn");
+          localStorage.removeItem("loginTimestamp");
+          localStorage.removeItem("userRole");
+          await supabase.auth.signOut();
+          updateAuthState(null, null, null);
+          return;
+        }
+        
         // 타임아웃 설정 (5초)
         const timeoutId = setTimeout(() => {
           if (isActive) {
@@ -198,15 +279,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (currentSession) {
           console.log("[Auth] 세션 존재함:", currentSession.user.email);
+          
+          // 캐시된 역할로 먼저 isAdmin 설정 (관리자 메뉴 빠른 표시)
+          const cachedRole = getCachedRole();
+          if (cachedRole === 'admin') {
+            setIsAdmin(true);
+          }
+          
           const profile = await loadUserProfile(currentSession.user);
           
           if (!isActive) return;
           
           updateAuthState(currentSession, currentSession.user, profile);
           
-          // localStorage 업데이트 (클라이언트에서만)
-          if (typeof window !== 'undefined') {
-            localStorage.setItem("isLoggedIn", "true");
+          // localStorage 업데이트
+          localStorage.setItem("isLoggedIn", "true");
+          // 로그인 타임스탬프가 없으면 설정 (이미 로그인 된 경우 유지)
+          if (!localStorage.getItem('loginTimestamp')) {
+            localStorage.setItem('loginTimestamp', Date.now().toString());
           }
         } else {
           console.log("[Auth] 세션 없음");
@@ -233,8 +323,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         switch (event) {
           case "SIGNED_IN":
-          case "TOKEN_REFRESHED":
             if (newSession) {
+              // 새로 로그인 시 타임스탬프 갱신
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('loginTimestamp', Date.now().toString());
+              }
               const profile = await loadUserProfile(newSession.user);
               if (isActive) {
                 updateAuthState(newSession, newSession.user, profile);
@@ -245,12 +338,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
             break;
 
+          case "TOKEN_REFRESHED":
+            if (newSession) {
+              const profile = await loadUserProfile(newSession.user);
+              if (isActive) {
+                updateAuthState(newSession, newSession.user, profile);
+              }
+            }
+            break;
+
           case "SIGNED_OUT":
             console.log("[Auth] 로그아웃됨");
             if (isActive) {
               updateAuthState(null, null, null);
               if (typeof window !== 'undefined') {
                 localStorage.removeItem("isLoggedIn");
+                localStorage.removeItem("loginTimestamp");
+                localStorage.removeItem("userRole");
               }
             }
             break;
@@ -276,7 +380,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       subscription.unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // 빈 의존성 - 마운트 시 한 번만 실행
+  }, []);
 
   const value: AuthContextType = {
     user,
@@ -304,3 +408,11 @@ export function useAuth() {
   }
   return context;
 }
+
+// userInterests 타입 (MyPage 등에서 사용)
+interface UserInterests {
+  genres?: string[];
+  fields?: string[];
+}
+
+export type { UserInterests };
