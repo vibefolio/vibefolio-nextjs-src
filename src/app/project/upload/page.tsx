@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import TiptapEditor from "@/components/editor/TiptapEditor";
@@ -157,6 +158,8 @@ export default function TiptapUploadPage() {
         };
         localStorage.setItem('project_draft', JSON.stringify(draft));
         setLastSaved(new Date());
+        // 조용한 자동저장 알림 (번거로우지 않게)
+        console.log('[Draft] 자동 저장됨:', new Date().toLocaleTimeString());
       }, 30000); // 30초
 
       return () => clearInterval(interval);

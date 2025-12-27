@@ -4,6 +4,8 @@
 "use client";
 
 import { Menu, ChevronDown, Search } from "lucide-react";
+import { NotificationBell } from "./NotificationBell";
+import { ThemeToggle } from "./ThemeToggle";
 // shadcn/ui 컴포넌트는 프로젝트 구조에 따라 경로를 조정해야 합니다.
 // App Router에서는 일반적으로 @/components/ui/XXX 형태로 사용합니다.
 import {
@@ -247,6 +249,8 @@ export function Header() {
               className="w-60 placeholder:text-neutral-400 outline-0 border-none focus-visible:ring-0"
             />
           </div>
+          <ThemeToggle />
+          <NotificationBell />
           <AuthButtons />
         </div>
       </header>
