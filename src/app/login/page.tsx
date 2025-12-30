@@ -129,7 +129,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
-      <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-lg shadow-lg">
+      <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-xl shadow-lg">
         <div>
           <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
             로그인
@@ -147,13 +147,11 @@ export default function LoginPage() {
 
         {/* 소셜 로그인 */}
         <div className="mt-8 space-y-3">
-
-
           <Button
             type="button"
             onClick={handleGoogleLogin}
             variant="outline"
-            className="w-full h-12 flex items-center justify-center gap-3 border-gray-300 hover:bg-gray-50"
+            className="w-full h-12 flex items-center justify-center gap-3 border-gray-300 hover:bg-gray-50 rounded-full"
           >
             <FontAwesomeIcon icon={faGoogle} className="w-5 h-5 text-red-500" />
             <span>Google로 로그인</span>
@@ -195,6 +193,7 @@ export default function LoginPage() {
                   setFormData({ ...formData, email: e.target.value })
                 }
                 placeholder="example@email.com"
+                className="h-12"
               />
             </div>
 
@@ -216,6 +215,7 @@ export default function LoginPage() {
                   setFormData({ ...formData, password: e.target.value })
                 }
                 placeholder="비밀번호"
+                className="h-12"
               />
             </div>
           </div>
@@ -250,7 +250,7 @@ export default function LoginPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary"
+              className="w-full h-12 rounded-full text-base font-medium btn-primary"
             >
               {loading ? "로그인 중..." : "로그인"}
             </Button>

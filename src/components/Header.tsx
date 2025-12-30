@@ -24,6 +24,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AuthButtons } from "./AuthButtons";
 
 import { SOCIAL_LINKS } from "@/lib/constants";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 // Vibe 로고 컴포넌트 (SVG: 말풍선 타입 & 볼드 서체, Green Theme)
 const VibeLogo = ({ className = "h-8" }: { className?: string }) => (
@@ -66,6 +67,7 @@ export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isAuthenticated } = useAuth();
   
   const handleSearch = (term: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -249,8 +251,8 @@ export function Header() {
               className="w-60 placeholder:text-neutral-400 outline-0 border-none focus-visible:ring-0"
             />
           </div>
-          <ThemeToggle />
-          <NotificationBell />
+          {/* <ThemeToggle /> - 기능 고도화 전까지 다크모드 숨김 */}
+          {isAuthenticated && <NotificationBell />}
           <AuthButtons />
         </div>
       </header>

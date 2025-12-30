@@ -90,7 +90,7 @@ export default function SignupPage() {
             이미 계정이 있으신가요?{" "}
             <Link
               href="/login"
-              className="font-medium text-[#4ACAD4] hover:text-[#41a3aa]"
+              className="font-medium text-primary hover:underline"
             >
               로그인
             </Link>
@@ -99,13 +99,11 @@ export default function SignupPage() {
 
         {/* 소셜 로그인 */}
         <div className="space-y-3">
-
-
           <Button
             type="button"
             onClick={handleGoogleSignup}
             variant="outline"
-            className="w-full h-12 flex items-center justify-center gap-3 border-gray-300 hover:bg-gray-50"
+            className="w-full h-12 flex items-center justify-center gap-3 border-gray-300 hover:bg-gray-50 rounded-full"
           >
             <FontAwesomeIcon icon={faGoogle} className="w-5 h-5 text-red-500" />
             <span>Google로 계속하기</span>
@@ -185,7 +183,7 @@ export default function SignupPage() {
           <Button
             type="submit"
             disabled={loading}
-            className="w-full h-12 bg-[#4ACAD4] hover:bg-[#41a3aa] text-white rounded-full text-base font-medium"
+            className="w-full h-12 btn-primary rounded-full text-base font-medium"
           >
             {loading ? "가입 중..." : "가입하기"}
           </Button>
@@ -194,11 +192,11 @@ export default function SignupPage() {
         <div className="text-center text-xs text-gray-500">
           <p>
             가입 시{" "}
-            <a href="#" className="text-[#4ACAD4] hover:underline">
+            <a href="#" className="text-primary hover:underline">
               이용약관
             </a>{" "}
             및{" "}
-            <a href="#" className="text-[#4ACAD4] hover:underline">
+            <a href="#" className="text-primary hover:underline">
               개인정보처리방침
             </a>
             에 동의하게 됩니다.
