@@ -24,65 +24,80 @@ export default function AuthCallbackPage() {
       }
     }, 20000);
 
-    // URL 에러 확인
+    // URL 파라미터 확인
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get("error")) {
+    const code = urlParams.get("code");
+    const error = urlParams.get("error");
+    const errorDescription = urlParams.get("error_description");
+
+    if (error) {
       setStatus("error");
-      setErrorMessage(urlParams.get("error_description") || urlParams.get("error") || "인증 오류");
+      setErrorMessage(errorDescription || error || "인증 오류");
       setTimeout(() => router.push("/login"), 3000);
       return;
     }
 
-    // 세션 처리 로직
-    const handleSession = (session: any, source: string) => {
+    // 세션 처리 성공 핸들러
+    const handleSuccess = async (session: any, source: string) => {
       if (!isMounted || !session) return;
-      
       console.log(`[Callback] Session confirmed via ${source}:`, session.user.email);
+      
       setStatus("success");
       localStorage.setItem("isLoggedIn", "true");
-      // 로그인 시점 기록 (30분 타임아웃 방지용)
       localStorage.setItem("loginTimestamp", Date.now().toString());
       
-      // 즉시 이동 시도
-      console.log("[Callback] Redirecting to home...");
-      router.replace("/");
+      // 아주 잠깐 대기 후 이동 (UI 보여주기 위함)
+      setTimeout(() => {
+        if (isMounted) {
+          console.log("[Callback] Redirecting to home...");
+          router.replace("/");
+        }
+      }, 500);
     };
 
-    // 1. 초기 세션 즉시 확인
+    // 1. Code Exchange (PKCE) 수동 시도
+    // detectSessionInUrl: true 설정이 있어도, 명시적으로 처리하는 것이 안전함
+    if (code) {
+      console.log("[Callback] Auth code detected, exchanging...");
+      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+        if (!isMounted) return;
+        if (error) {
+          console.error("[Callback] Code exchange failed:", error);
+          // 실패해도 일단 getSession 시도는 계속 진행
+        } else if (data.session) {
+          handleSuccess(data.session, "exchangeCodeForSession");
+          return; // 성공했으면 아래 로직 중단 안함 (이중 체크 무방)
+        }
+      });
+    }
+
+    // 2. getSession 확인
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        handleSession(session, "getSession");
+        handleSuccess(session, "getSession");
       } else {
-        setDebug("세션 대기 중...");
+        setDebug("세션 정보 수신 중...");
       }
     });
 
-    // 2. 상태 변경 이벤트 감지
+    // 3. Auth State Change 구독
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log(`[Callback] Auth event: ${event}`);
-      setDebug(`이벤트: ${event}`);
       if (session) {
-        handleSession(session, `onAuthStateChange(${event})`);
+        handleSuccess(session, `onAuthStateChange(${event})`);
       }
     });
 
-    // 3. 마지막 수단: 7초 후에도 로딩 중이면 강제 이동 (세션이 이미 설정되었을 확률 높음)
+    // 4. 강제 탈출: 5초 후에도 여전히 로딩 중이면 홈으로 강제 이동
+    // (getSession이 응답하지 않더라도 무조건 이동)
     const forcedRedirect = setTimeout(() => {
       if (isMounted && status === "loading") {
-        console.log("[Callback] 7 seconds passed, trying forced redirection");
-        // 세션이 정말 없는지 한 번 더 확인
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          if (isMounted) {
-            if (session) {
-              handleSession(session, "forcedRedirectWithSession");
-            } else {
-              console.log("[Callback] Forced redirect - sending to home anyway");
-              router.replace("/");
-            }
-          }
-        });
+        console.warn("[Callback] Timeout safety trigger - forcing redirect to home");
+        // 확실하게 홈으로 보냄. 세션이 생겼을 수도 있고, 없으면 홈에서 다시 로그인 유도하면 됨.
+        // 에러 화면에 갇히는 것보다 나음.
+        router.replace("/");
       }
-    }, 7000);
+    }, 5000);
 
     return () => {
       isMounted = false;
