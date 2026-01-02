@@ -1,13 +1,10 @@
 // src/components/Header.tsx
 
-// 🚨 클라이언트 상호작용(Sheet, Drawer, onClick, useState 등)이 있으므로 필수!
 "use client";
 
-import { Menu, ChevronDown, Search } from "lucide-react";
+import React, { useState } from "react";
+import { Menu, ChevronRight, Search, X, Home, Users, Instagram, Facebook, Twitter, Shield } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
-import { ThemeToggle } from "./ThemeToggle";
-// shadcn/ui 컴포넌트는 프로젝트 구조에 따라 경로를 조정해야 합니다.
-// App Router에서는 일반적으로 @/components/ui/XXX 형태로 사용합니다.
 import {
   Button,
   Drawer,
@@ -22,12 +19,10 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AuthButtons } from "./AuthButtons";
-
 import { SOCIAL_LINKS } from "@/lib/constants";
 import { useAuth } from "@/lib/auth/AuthContext";
-import React from "react";
 
-// Vibe 로고 컴포넌트 (SVG: 말풍선 타입 & 볼드 서체, Green Theme)
+// Vibe 로고 컴포넌트 (일관성 유지를 위해 고정 시킴)
 const VibeLogo = ({ className = "h-8" }: { className?: string }) => (
   <svg viewBox="0 0 250 50" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -36,221 +31,189 @@ const VibeLogo = ({ className = "h-8" }: { className?: string }) => (
         <stop offset="1" stopColor="#84CC16" />
       </linearGradient>
     </defs>
-    
-    {/* 심볼: 모던 말풍선 (크기: 기존 대비 1.15배 확대) */}
     <g transform="translate(0, -3) scale(1.15)">
       <path 
         d="M10 5H40C45.5228 5 50 9.47715 50 15V29C50 34.5228 45.5228 39 40 39H30L20 46V39H10C4.47715 39 0 34.5228 0 29V15C0 9.47715 4.47715 5 10 5Z" 
         fill="url(#vibe_gradient)" 
       />
-      {/* 심볼 내부: V Mark */}
       <path d="M16 16L25 30L34 16" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
     </g>
-    
-    {/* 텍스트: VIBEFOLIO (간격 조정 x=70) */}
-    <text x="70" y="35" fontFamily="'Inter', -apple-system, BlinkMacSystemFont, sans-serif" fontWeight="900" fontSize="28" fill="#111827" letterSpacing="-0.5">
+    <text x="70" y="35" fontFamily="'Inter', sans-serif" fontWeight="900" fontSize="28" fill="#111827" letterSpacing="-0.5">
       VIBE<tspan fontWeight="400" dx="0">FOLIO</tspan>
     </text>
   </svg>
 );
 
-const menu = [
-  { label: "발견", newest: false, dropdown: false, path: "/" },
-  {
-    label: "연결",
-    newest: true,
-    dropdown: false,
-    path: "/recruit",
-  },
+const menuItems = [
+  { label: "발견", path: "/", icon: Home, newest: false },
+  { label: "연결", path: "/recruit", icon: Users, newest: true },
 ];
 
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isAdmin } = useAuth();
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   
   const handleSearch = (term: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (term) {
-      params.set("q", term);
-    } else {
-      params.delete("q");
-    }
+    if (term) params.set("q", term);
+    else params.delete("q");
     router.push(`/?${params.toString()}`);
   };
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
-      const target = e.target as HTMLInputElement;
-      handleSearch(target.value);
+      handleSearch((e.target as HTMLInputElement).value);
     }
-  };
-
-  const handleMobileSearchChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-  };
-
-  const handleMobileSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-       const target = e.target as HTMLInputElement;
-       handleSearch(target.value);
-     }
   };
 
   return (
     <>
-      {/* 모바일 헤더 (1024px 미만) */}
-      <header className="sticky top-0 z-40 w-full flex flex-col items-center justify-between py-4 px-4 border-b simple-header bg-white lg:hidden">
-        <div className="w-full h-full flex items-center justify-between">
-          <div className="w-full flex items-center gap-4">
-            <Sheet>
-              <SheetTrigger>
-                <Menu className="w-5 h-5" />
+      {/* 📱 모바일 헤더 (1024px 미만) */}
+      <header className="sticky top-0 z-40 w-full lg:hidden border-b bg-white/80 backdrop-blur-md">
+        <div className="flex items-center justify-between h-16 px-4">
+          <div className="flex items-center gap-3">
+            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <Menu className="w-6 h-6" />
+                </Button>
               </SheetTrigger>
-              <SheetContent
-                side="left"
-                className="flex flex-col px-8 pb-8 gap-8 overflow-y-scroll"
-              >
-                <div className="flex flex-col gap-6">
-                  {menu.map((item, index) => {
-                    const isActive = pathname === item.path;
-                    return (
-                      <Link
-                        href={item.path}
-                        key={index}
-                        className={`h-full flex items-center gap-1 font-medium`}
-                      >
-                        <p
-                          className={`text-[15px] ${isActive && "mt-0.5 border-b-2 border-black"}`}
+              <SheetContent side="left" className="w-[300px] p-0 flex flex-col bg-white">
+                {/* 사이드바 상단 로고 영역 */}
+                <div className="p-6 pb-2">
+                  <VibeLogo className="h-7 w-auto mb-2" />
+                  <p className="text-xs text-gray-400 font-medium">AI 창작자를 위한 영감의 공간</p>
+                </div>
+
+                <div className="flex-1 overflow-y-auto py-4">
+                  <nav className="px-4 space-y-1">
+                    {menuItems.map((item) => {
+                      const isActive = pathname === item.path;
+                      return (
+                        <Link
+                          key={item.path}
+                          href={item.path}
+                          onClick={() => setIsSheetOpen(false)}
+                          className={`flex items-center justify-between p-3 rounded-xl transition-all ${
+                            isActive ? "bg-green-50 text-green-600" : "text-gray-600 hover:bg-gray-50"
+                          }`}
                         >
-                          {item.label}
-                        </p>
-                        {item.dropdown && <ChevronDown className="w-3 h-3" />}
-                        {item.newest && (
-                          <p className="text-xs text-[#05BCC6] font-medium">
-                            NEW
-                          </p>
-                        )}
+                          <div className="flex items-center gap-3">
+                            <item.icon className={`w-5 h-5 ${isActive ? "text-green-500" : "text-gray-400"}`} />
+                            <span className="font-semibold text-sm">{item.label}</span>
+                            {item.newest && (
+                              <span className="px-1.5 py-0.5 text-[10px] bg-cyan-100 text-cyan-600 rounded-md font-bold">NEW</span>
+                            )}
+                          </div>
+                          <ChevronRight className="w-4 h-4 opacity-30" />
+                        </Link>
+                      );
+                    })}
+                  </nav>
+
+                  <div className="mt-8 px-4">
+                    <p className="px-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Account</p>
+                    <div className="p-1 space-y-2">
+                      <AuthButtons />
+                    </div>
+                  </div>
+
+                  {isAdmin && (
+                    <div className="mt-4 px-4">
+                      <Link href="/admin" onClick={() => setIsSheetOpen(false)} className="flex items-center gap-3 p-3 text-indigo-600 font-semibold text-sm hover:bg-indigo-50 rounded-xl transition-colors">
+                        <Shield className="w-5 h-5" />
+                        관리자 센터
                       </Link>
-                    );
-                  })}
+                    </div>
+                  )}
                 </div>
-                
-                <div className="flex flex-col gap-6 mt-16">
-                  {/* 모바일 사이드바 로고 */}
-                  <VibeLogo className="w-28 text-foreground" />
-                  <div className="flex flex-col gap-1">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      AI 창작자를 위한 영감의 공간
-                    </p>
+
+                {/* 사이드바 하단 소셜/정보 */}
+                <div className="p-6 border-t bg-gray-50/50">
+                  <div className="flex items-center gap-4 mb-4">
+                    <a href={SOCIAL_LINKS.INSTAGRAM} className="text-gray-400 hover:text-pink-500"><Instagram className="w-5 h-5" /></a>
+                    <a href={SOCIAL_LINKS.FACEBOOK} className="text-gray-400 hover:text-blue-600"><Facebook className="w-5 h-5" /></a>
+                    <a href={SOCIAL_LINKS.TWITTER} className="text-gray-400 hover:text-black"><Twitter className="w-5 h-5" /></a>
                   </div>
-                  <div className="flex flex-col gap-2 auth-buttons-mobile">
-                    <AuthButtons />
-                  </div>
-                </div>
-                <Separator />
-                <Separator />
-                <div className="flex flex-col gap-6">
-                  <div className="flex flex-col gap-6">
-                      <div className="flex flex-col gap-4">
-                        <a href={SOCIAL_LINKS.INSTAGRAM} target="_blank" rel="noopener noreferrer" className="text-sm">Instagram</a>
-                        <a href={SOCIAL_LINKS.FACEBOOK} target="_blank" rel="noopener noreferrer" className="text-sm">Facebook</a>
-                        <a href={SOCIAL_LINKS.TWITTER} target="_blank" rel="noopener noreferrer" className="text-sm">Twitter</a>
-                      </div>
-                  </div>
+                  <p className="text-[10px] text-gray-400">© 2025 VIBEFOLIO. All rights reserved.</p>
                 </div>
               </SheetContent>
             </Sheet>
-            <Link href="/" className="flex items-center text-foreground hover:opacity-80 transition-opacity">
-              <VibeLogo className="h-8 w-auto" />
+            <Link href="/" className="hover:opacity-80 transition-opacity">
+              <VibeLogo className="h-7 w-auto" />
             </Link>
           </div>
-          <div className="flex items-center gap-3">
-            <Button asChild className="btn-primary rounded-full px-6 text-sm">
-              <Link href="/login">
-                <span>로그인</span>
-              </Link>
-            </Button>
+
+          <div className="flex items-center gap-1">
             <Drawer>
-              <DrawerTrigger>
-                <Search className="w-5 h-5" />
+              <DrawerTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <Search className="w-5 h-5" />
+                </Button>
               </DrawerTrigger>
-              <DrawerContent className="h-full flex flex-col gap-6 px-6">
-                  <div className="flex items-center border px-3 rounded-full bg-neutral-50">
-                  <Search className="w-4 h-4 text-neutral-400" />
+              <DrawerContent className="h-[200px] p-6">
+                <div className="flex items-center gap-3 bg-gray-100 p-3 rounded-2xl">
+                  <Search className="w-5 h-5 text-gray-400" />
                   <Input
-                    placeholder="크리에이티브 프로젝트 검색"
-                    onChange={handleMobileSearchChange}
-                    onKeyDown={handleMobileSearchKeyDown}
-                    className="w-full placeholder:text-neutral-400 outline-0 border-none focus-visible:ring-0"
+                    placeholder="프로젝트 검색..."
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleSearch((e.target as HTMLInputElement).value);
+                      }
+                    }}
+                    className="border-none bg-transparent focus-visible:ring-0 text-base p-0 h-auto"
                   />
                 </div>
               </DrawerContent>
             </Drawer>
           </div>
         </div>
-        <nav className="w-full h-16 flex items-center gap-6">
-          {menu.map((item, index) => {
-            const isActive = pathname === item.path;
-            return (
-              <Link
-                href={item.path}
-                key={index}
-                className={`h-full flex items-center gap-1 font-medium ${isActive && "h-[calc(100%-2px)] border-b-2 border-black"}`}
-              >
-                <p className={`text-base font-medium ${isActive && "mt-0.5"}`}>
-                  {item.label}
-                </p>
-                {item.dropdown && <ChevronDown className="w-3 h-3" />}
-                {item.newest && (
-                  <p className="text-xs text-[#05BCC6] font-medium">NEW</p>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
       </header>
 
-      {/* 데스크탑 헤더 (1024px 이상) */}
-      <header className="sticky top-0 z-40 w-full h-16 hidden lg:flex items-center justify-between px-10 border-b simple-header bg-white transition-colors">
-        <div className="h-full flex items-center gap-10">
-          <Link href="/" className="flex items-center text-foreground hover:text-primary transition-colors">
+      {/* 🖥 데스크탑 헤더 (1024px 이상) */}
+      <header className="sticky top-0 z-40 w-full h-16 hidden lg:flex items-center justify-between px-8 border-b bg-white/80 backdrop-blur-md">
+        <div className="flex items-center gap-10">
+          <Link href="/" className="hover:opacity-80 transition-opacity">
             <VibeLogo className="h-9 w-auto" />
           </Link>
-          <nav className="h-full flex items-center gap-8">
-            {menu.map((item, index) => {
+          <nav className="flex items-center gap-6">
+            {menuItems.map((item) => {
               const isActive = pathname === item.path;
               return (
                 <Link
+                  key={item.path}
                   href={item.path}
-                  key={index}
-                  className={`h-full flex items-center gap-1 font-medium ${isActive && "h-[calc(100%-2px)] border-b-2 border-black"}`}
+                  className={`relative px-1 py-2 text-[15px] font-bold transition-colors ${
+                    isActive ? "text-green-600" : "text-gray-500 hover:text-black"
+                  }`}
                 >
-                  <p className={`text-[15px] font-medium tracking-wide ${isActive && "mt-0.5 text-primary"}`}>
-                    {item.label}
-                  </p>
-                  {item.dropdown && <ChevronDown className="w-2.5 h-2.5 opacity-50" />}
+                  {item.label}
+                  {isActive && (
+                    <span className="absolute bottom-0 left-0 w-full h-0.5 bg-green-500 rounded-full" />
+                  )}
                   {item.newest && (
-                    <span className="text-[10px] bg-accent text-accent-foreground px-1.5 py-0.5 rounded-full font-bold ml-1">NEW</span>
+                    <span className="absolute -top-1 -right-4 px-1 py-0.5 text-[9px] bg-accent text-white rounded-md font-black">NEW</span>
                   )}
                 </Link>
               );
             })}
           </nav>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center border px-3 rounded-full bg-neutral-50">
-            <Search className="w-4 h-4 text-neutral-400" />
+
+        <div className="flex items-center gap-4">
+          <div className="flex items-center bg-gray-100/80 px-4 py-2 rounded-full w-64 group focus-within:bg-white focus-within:ring-2 focus-within:ring-green-500/20 transition-all">
+            <Search className="w-4 h-4 text-gray-400 group-focus-within:text-green-500" />
             <Input
-              placeholder="크리에이티브 프로젝트 검색"
+              placeholder="프로젝트 검색"
               onKeyDown={handleSearchKeyDown}
-              className="w-60 placeholder:text-neutral-400 outline-0 border-none focus-visible:ring-0"
+              className="border-none bg-transparent focus-visible:ring-0 text-sm p-0 h-auto ml-2 placeholder:text-gray-400"
             />
           </div>
-          {/* <ThemeToggle /> - 기능 고도화 전까지 다크모드 숨김 */}
           {isAuthenticated && <NotificationBell />}
+          <div className="h-8 w-[1px] bg-gray-200 mx-2" />
           <AuthButtons />
         </div>
       </header>
