@@ -4,6 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 
+/**
+ * [Callback Page]
+ * 이 페이지는 오직 한 가지만 합니다.
+ * Supabase가 URL의 인증 정보를 처리하고 세션을 잡아챌 때까지 "기다리는 것" 입니다.
+ */
 export default function AuthCallbackPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -13,76 +18,74 @@ export default function AuthCallbackPage() {
     if (processedRef.current) return;
     processedRef.current = true;
 
-    const handleCallback = async () => {
-      console.log("[Callback] Starting manual code exchange...");
+    console.log("[Callback] Waiting for Supabase to process auth...");
+
+    // 15초 타임아웃 (아무 반응 없을 경우)
+    const timer = setTimeout(() => {
+      if (!error) {
+        console.error("[Callback] Auth Timeout - Redirecting to login");
+        setError("인증 시간이 초과되었습니다.");
+        setTimeout(() => router.push("/login"), 2000);
+      }
+    }, 15000);
+
+    // 가장 확실한 방법: 이벤트 리스너
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log(`[Callback] Auth Event Received: ${event}`);
       
-      const url = new URL(window.location.href);
-      const code = url.searchParams.get("code");
-      const errorMsg = url.searchParams.get("error_description") || url.searchParams.get("error");
-
-      if (errorMsg) {
-        console.error("[Callback] Error from URL:", errorMsg);
-        setError(errorMsg);
-        setTimeout(() => router.push("/login"), 3000);
-        return;
-      }
-
-      if (!code) {
-        console.warn("[Callback] No code found, checking session...");
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          router.replace("/");
-        } else {
-          setError("인증 코드를 찾을 수 없습니다.");
-          setTimeout(() => router.push("/login"), 2000);
-        }
-        return;
-      }
-
-      try {
-        // PKCE 코드 교환
-        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      if (session && (event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
+        console.log("[Callback] Login Successful, saving flags and redirecting...");
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("lastActivity", Date.now().toString());
         
-        if (exchangeError) throw exchangeError;
-        
-        if (data.session) {
-          console.log("[Callback] Exchange success, setting flags...");
-          localStorage.setItem("isLoggedIn", "true");
-          localStorage.setItem("lastActivity", Date.now().toString());
-          
-          // 전역 세션 상태 동기화를 위해 짧은 대기 후 이동 (선택적)
-          router.replace("/");
-        } else {
-          throw new Error("세션을 성공적으로 가져오지 못했습니다.");
-        }
-      } catch (e: any) {
-        console.error("[Callback] Fatal Error:", e.message);
-        setError(e.message || "인증 처리 중 서버 오류가 발생했습니다.");
-        setTimeout(() => router.push("/login"), 3000);
+        clearTimeout(timer);
+        router.replace("/");
       }
+    });
+
+    // 만약 이미 세션이 잡혀있다면 (매우 빠른 경우)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        console.log("[Callback] Session already exists, redirecting...");
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("lastActivity", Date.now().toString());
+        clearTimeout(timer);
+        router.replace("/");
+      }
+    });
+
+    return () => {
+      clearTimeout(timer);
+      subscription.unsubscribe();
     };
-
-    handleCallback();
-  }, [router]);
+  }, [router, error]);
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-white text-black font-sans">
-      <div className="text-center p-8 max-w-sm w-full border border-gray-100 rounded-3xl shadow-2xl">
+    <div className="flex items-center justify-center min-h-screen bg-white">
+      <div className="text-center p-12 max-w-sm border border-gray-100 rounded-[40px] shadow-2xl">
         {!error ? (
-          <div className="flex flex-col items-center gap-6">
-            <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="flex flex-col items-center gap-8">
+            <div className="relative">
+              <div className="w-16 h-16 border-[5px] border-gray-100 rounded-full"></div>
+              <div className="absolute top-0 w-16 h-16 border-[5px] border-green-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
             <div>
-              <h1 className="text-xl font-bold mb-2">인증 완료 중</h1>
-              <p className="text-gray-500 text-sm">안전하게 로그인 처리를 진행하고 있습니다.</p>
+              <h1 className="text-2xl font-black text-gray-900 mb-2">반가워요!</h1>
+              <p className="text-gray-400 text-sm font-medium">안전한 로그인을 위해 세션을 불러오는 중입니다.</p>
             </div>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-6">
-            <div className="w-12 h-12 bg-red-100 text-red-500 flex items-center justify-center rounded-full text-2xl font-bold">!</div>
+            <div className="w-16 h-16 bg-red-50 text-red-500 flex items-center justify-center rounded-full text-2xl">!</div>
             <div>
-              <h1 className="text-xl font-bold mb-2 text-red-600">인증 실패</h1>
+              <h1 className="text-xl font-bold text-red-600 mb-2">인증에 실패했습니다</h1>
               <p className="text-gray-500 text-sm">{error}</p>
-              <p className="text-xs text-gray-400 mt-4">잠시 후 로그인 페이지로 돌아갑니다.</p>
+              <button 
+                onClick={() => router.push("/login")}
+                className="mt-6 px-6 py-2 bg-gray-900 text-white rounded-full text-sm font-bold"
+              >
+                다시 로그인하기
+              </button>
             </div>
           </div>
         )}

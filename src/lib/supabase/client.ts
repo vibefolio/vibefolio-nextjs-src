@@ -21,7 +21,7 @@ if (supabaseUrl && supabaseAnonKey) {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: false, // 자동 감지 대신 수동(교환)으로 100% 제어
+      detectSessionInUrl: true, // 자동 감지가 켜져 있어야 구글 로그인 파라미터를 Supabase가 읽어감
     },
   });
   console.log('[Supabase] Client initialized successfully');
