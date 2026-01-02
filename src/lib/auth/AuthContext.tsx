@@ -1,9 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { User, Session, AuthChangeEvent } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 // 30분 세션 타임아웃 (밀리초)
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
@@ -28,18 +28,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// SSR 안전: mounted 상태 확인용
-function useIsMounted() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-  return mounted;
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const isMounted = useIsMounted();
+  const pathname = usePathname();
   
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -47,38 +38,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // ====== 30분 세션 타임아웃 설정 ======
-  const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+  const initializedRef = useRef(false);
 
-  // 세션 타임아웃 체크 (30분 미활동 시 true 반환)
+  // ====== 1. 세션 타임아웃 체크 (30분 규칙) ======
   const checkSessionTimeout = useCallback((): boolean => {
     if (typeof window === 'undefined') return false;
     
     try {
       const lastActivity = localStorage.getItem('lastActivity');
-      // 기록이 없으면 타임아웃 아님 (신규 진입으로 간주하거나, 로그인 세션 생성 시 기록됨)
       if (!lastActivity) return false;
       
       const lastTime = parseInt(lastActivity, 10);
-      const now = Date.now();
-      const elapsed = now - lastTime;
+      const elapsed = Date.now() - lastTime;
       
-      // 30분 초과 시
       if (elapsed > SESSION_TIMEOUT_MS) {
-        console.warn("[Auth] Session timeout (30min inactive) -> Force Logout");
+        console.warn("[Auth] 30min Inactive -> Logout Triggered");
         return true; 
       }
     } catch (e) {
-      return true; // 에러 시 안전하게 로그아웃
+      return false;
     }
-    
-    // 활동 시간 갱신 (살아있다면)
-    localStorage.setItem('lastActivity', Date.now().toString());
-    return false; 
+    return false;
   }, []);
 
-  // 프로필 정보 로드 (ONLY DB)
-  // 캐시나 메타데이터 절대 사용 안함. DB 없으면 없는 것.
+  // ====== 2. 프로필 정보 로드 (ONLY DB) ======
   const loadUserProfile = useCallback(async (currentUser: User): Promise<UserProfile> => {
     try {
       const { data: userData, error: userError } = await supabase
@@ -88,249 +71,127 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (userError || !userData) {
-        console.warn("[Auth] User not found in DB or Error:", userError?.message);
-        // 빈 프로필 반환 (메타데이터 사용 X)
-        return {
-          nickname: "알 수 없음",
-          profile_image_url: "/globe.svg",
-          role: "user",
-        };
+        return { nickname: "알 수 없음", profile_image_url: "/globe.svg", role: "user" };
       }
 
-      // DB 데이터 사용
       const typedData = userData as { role?: string; nickname?: string; profile_image_url?: string };
-      
       return {
         nickname: typedData.nickname || "이름 없음",
         profile_image_url: typedData.profile_image_url || "/globe.svg",
         role: typedData.role || "user",
       };
-
     } catch (error) {
-      console.error("[Auth] Load Profile Error:", error);
-      return {
-        nickname: "오류",
-        profile_image_url: "/globe.svg",
-        role: "user",
-      };
+      return { nickname: "오류", profile_image_url: "/globe.svg", role: "user" };
     }
   }, []);
 
-  // 상태 업데이트 및 스토리지 관리
-  const updateAuthState = useCallback((
-    newSession: Session | null, 
-    newUser: User | null, 
-    newProfile: UserProfile | null
-  ) => {
-    setSession(newSession);
-    setUser(newUser);
-    setUserProfile(newProfile);
-    setIsAdmin(newProfile?.role === 'admin');
-    setLoading(false); // 즉시 로딩 해제
-    
-    if (typeof window !== 'undefined') {
-      if (newSession && newUser) {
-        // 로그인 상태라면 활동 시간 기록
-        localStorage.setItem('lastActivity', Date.now().toString());
-        localStorage.setItem('isLoggedIn', 'true');
-      } else {
-        // 로그아웃 상태라면 흔적 제거
-        localStorage.removeItem('lastActivity');
-        // 그 외 불필요한 키들도 제거
-        localStorage.removeItem('loginTimestamp');
-        localStorage.removeItem('userRole'); 
-        localStorage.removeItem('isLoggedIn');
-      }
+  // ====== 3. 상태 업데이트 및 스토리지 동기화 ======
+  const syncAuthState = useCallback(async (newSession: Session | null) => {
+    if (!newSession) {
+      setUser(null);
+      setSession(null);
+      setUserProfile(null);
+      setIsAdmin(false);
+      localStorage.removeItem('lastActivity');
+      localStorage.removeItem('isLoggedIn');
+    } else {
+      const profile = await loadUserProfile(newSession.user);
+      setSession(newSession);
+      setUser(newSession.user);
+      setUserProfile(profile);
+      setIsAdmin(profile.role === 'admin');
+      localStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('lastActivity', Date.now().toString());
     }
-  }, []);
-
-  // 로그아웃 함수
-  const signOut = useCallback(async () => {
-    try {
-      updateAuthState(null, null, null);
-      await supabase.auth.signOut();
-      router.push("/");
-      router.refresh();
-    } catch (error) {
-      console.error("로그아웃 오류:", error);
-      router.push("/");
-    }
-  }, [router, updateAuthState]);
-
-  // 세션 새로고침
-  const refreshSession = useCallback(async () => {
-    try {
-      const { data: { session: newSession }, error } = await supabase.auth.refreshSession();
-      if (error) {
-        if (error.message.includes("refresh_token_not_found") || error.message.includes("invalid")) {
-          await signOut();
-        }
-        return;
-      }
-      if (newSession) {
-        const profile = await loadUserProfile(newSession.user);
-        updateAuthState(newSession, newSession.user, profile);
-      }
-    } catch (error) {
-      console.error("세션 새로고침 오류:", error);
-    }
-  }, [signOut, loadUserProfile, updateAuthState]);
-
-  // 외부에서 호출 가능한 프로필 새로고침 함수
-  const refreshUserProfile = useCallback(async () => {
-    try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (currentUser) {
-        const profile = await loadUserProfile(currentUser);
-        setUserProfile(profile);
-        setIsAdmin(profile.role === 'admin');
-      }
-    } catch (e) {
-      console.error("프로필 새로고침 실패:", e);
-    }
+    setLoading(false);
   }, [loadUserProfile]);
 
-  // 초기화 완료 여부 (중복 실행 방지)
-  const initializedRef = React.useRef(false);
-
-  // 초기화 로직
+  // ====== 4. 초기화 및 이벤트 리스너 ======
   useEffect(() => {
-    let isActive = true;
+    if (initializedRef.current) return;
+    initializedRef.current = true;
 
-    const initializeAuth = async () => {
-      // 1. 초기화 중복 실행 및 SSR 방지
-      if (typeof window === 'undefined' || initializedRef.current) return;
-      initializedRef.current = true; // 시작하자마자 잠금
-
-      const logPrefix = `[Auth@${new Date().toLocaleTimeString()}]`;
-      console.log(`${logPrefix} 1. Initialization started...`);
-
-      try {
-        const isCallbackPage = window.location.pathname === "/auth/callback";
-        
-        // 2. 빠른 판단 (Quick Path): 로그아웃 상태면 DB 조회 생략
-        // 단, 콜백 페이지에서는 이제 막 로그인을 시도하는 중이므로 이 체크를 건너뜀
-        const wasLoggedIn = localStorage.getItem("isLoggedIn") === "true";
-        if (!wasLoggedIn && !isCallbackPage) {
-          console.log(`${logPrefix} 1.1 Quick Path: No isLoggedIn flag, set to null`);
-          if (isActive) updateAuthState(null, null, null);
-          return;
-        }
-
-        // 3. 30분 타임아웃 사전 체크 (콜백 페이지에서는 무시)
-        if (!isCallbackPage && checkSessionTimeout()) {
-          console.warn(`${logPrefix} 1.2 Pre-check: Session expired by 30min rule`);
-          if (isActive) updateAuthState(null, null, null);
-          supabase.auth.signOut().catch(() => {});
-          return;
-        }
-
-        const timeoutMs = isCallbackPage ? 15000 : 5000; // 콜백 페이지 15초, 일반 5초
-        console.log(`${logPrefix} 2. Fetching session (Timeout: ${timeoutMs}ms)...`);
-        
-        // 4. 세션 가져오기
-        const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise<{data: {session: null}, error: any}>((resolve) => 
-          setTimeout(() => resolve({ data: { session: null }, error: new Error("Timeout") }), timeoutMs)
-        );
-
-        const startTime = Date.now();
-        const { data: { session: currentSession }, error } = await Promise.race([sessionPromise, timeoutPromise]) as any;
-        
-        console.log(`${logPrefix} 3. Session result (${Date.now() - startTime}ms):`, currentSession ? "Exists" : "None/Timeout");
-
-        if (!isActive) return;
-
-        if (currentSession) {
-          // 5. 프로필 로드 (DB Only)
-          console.log(`${logPrefix} 4. Loading profile for`, currentSession.user.id);
-          const profile = await loadUserProfile(currentSession.user);
-          console.log(`${logPrefix} 5. Profile loaded:`, profile.nickname);
-          
-          if (isActive) updateAuthState(currentSession, currentSession.user, profile);
-        } else {
-          // 세션 없거나 타임아웃
-          if (isActive) updateAuthState(null, null, null);
-        }
-
-      } catch (error) {
-        console.error(`${logPrefix} Fatal Init Error:`, error);
-        if (isActive) updateAuthState(null, null, null);
+    const init = async () => {
+      console.log(`[Auth] Initializing on ${pathname}`);
+      
+      // 콜백 페이지면 컨텍스트 초기화는 건너뛰고 콜백 페이지 전용 로직에 맡김
+      if (pathname === "/auth/callback") {
+        setLoading(false);
+        return;
       }
+
+      // 30분 타임아웃 먼저 체크
+      if (checkSessionTimeout()) {
+        await supabase.auth.signOut();
+        await syncAuthState(null);
+        return;
+      }
+
+      // 세션 확인 (getSession은 캐시 우선이라 빠름)
+      const { data: { session: initialSession } } = await supabase.auth.getSession();
+      await syncAuthState(initialSession);
     };
 
-    initializeAuth();
+    init();
 
-    // onAuthStateChange 구독
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: AuthChangeEvent, newSession: Session | null) => {
-        if (!isActive) return;
-
-        console.log(`[Auth] Event Triggered: ${event}`);
-
-        switch (event) {
-          case "SIGNED_IN":
-          case "TOKEN_REFRESHED":
-            if (newSession) {
-              const profile = await loadUserProfile(newSession.user);
-              if (isActive) updateAuthState(newSession, newSession.user, profile);
-            }
-            break;
-
-          case "SIGNED_OUT":
-            if (isActive) updateAuthState(null, null, null);
-            break;
-
-          case "USER_UPDATED":
-            if (newSession?.user && isActive) {
-              const profile = await loadUserProfile(newSession.user);
-              setUser(newSession.user);
-              setUserProfile(profile);
-              setIsAdmin(profile.role === 'admin');
-            }
-            break;
-        }
+    // 상태 변경 감지
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      console.log(`[Auth] Event: ${event}`);
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+        await syncAuthState(currentSession);
+      } else if (event === "SIGNED_OUT") {
+        await syncAuthState(null);
       }
-    );
+    });
 
     return () => {
-      isActive = false;
       subscription.unsubscribe();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [pathname, checkSessionTimeout, syncAuthState]);
+
+  // ====== 5. 주기적 타임아웃 체크 (30분 규칙 강화) ======
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (user && checkSessionTimeout()) {
+        supabase.auth.signOut().then(() => syncAuthState(null));
+      }
+    }, 60000); // 1분마다 체크
+    return () => clearInterval(interval);
+  }, [user, checkSessionTimeout, syncAuthState]);
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    await syncAuthState(null);
+    router.push("/");
+  };
 
   const value: AuthContextType = {
     user,
     session,
-    loading: !isMounted || loading, // 마운트되지 않았으면 로딩 상태 유지
-    isAuthenticated: !!user && !!session,
+    loading,
+    isAuthenticated: !!user,
     isAdmin,
     userProfile,
     signOut,
-    refreshSession,
-    refreshUserProfile,
+    refreshSession: async () => {
+      const { data: { session: rs } } = await supabase.auth.refreshSession();
+      await syncAuthState(rs);
+    },
+    refreshUserProfile: async () => {
+      if (user) {
+        const p = await loadUserProfile(user);
+        setUserProfile(p);
+      }
+    },
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (context === undefined) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 }
 
-// userInterests 타입 (MyPage 등에서 사용)
-interface UserInterests {
-  genres?: string[];
-  fields?: string[];
-}
-
-export type { UserInterests };
+export type UserInterests = { genres?: string[]; fields?: string[] };

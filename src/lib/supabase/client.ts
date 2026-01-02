@@ -21,7 +21,7 @@ if (supabaseUrl && supabaseAnonKey) {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: true, // URL에서 세션을 자동 감지
+      detectSessionInUrl: false, // 자동 감지 대신 수동(교환)으로 100% 제어
     },
   });
   console.log('[Supabase] Client initialized successfully');
