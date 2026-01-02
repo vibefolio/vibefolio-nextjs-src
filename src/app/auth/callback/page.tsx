@@ -44,8 +44,8 @@ export default function AuthCallbackPage() {
       
       setStatus("success");
       localStorage.setItem("isLoggedIn", "true");
-      // loginTimestamp는 AuthContext에서 관리하므로 여기서 굳이 중복으로 안 해도 되지만,
-      // 즉시성을 위해 남겨두되, 타임아웃 계산은 하지 않음
+      // 메인 페이지 AuthContext의 30분 타임아웃 체크를 통과하기 위해 마지막 활동 시간을 현재로 갱신
+      localStorage.setItem("lastActivity", Date.now().toString());
       
       // 즉시 이동 (지연 없음)
       if (isMounted) {
