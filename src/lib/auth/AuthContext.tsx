@@ -112,14 +112,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializedRef.current = true;
 
     const init = async () => {
-      console.log(`[Auth] Initializing on ${pathname}`);
-      
-      // 콜백 페이지면 컨텍스트 초기화는 건너뛰고 콜백 페이지 전용 로직에 맡김
-      if (pathname === "/auth/callback") {
+      // 콜백 페이지면 즉시 항복(Surrender)하고 로딩 해제 -> 콜백 페이지 전용 로직이 돌아가게 함
+      if (typeof window !== 'undefined' && window.location.pathname === "/auth/callback") {
+        console.log("[Auth] Surrendering to Callback Page...");
         setLoading(false);
         return;
       }
 
+      console.log(`[Auth] Initializing on ${pathname}`);
+      
       // 30분 타임아웃 먼저 체크
       if (checkSessionTimeout()) {
         await supabase.auth.signOut();

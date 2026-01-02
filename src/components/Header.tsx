@@ -22,27 +22,7 @@ import { AuthButtons } from "./AuthButtons";
 import { SOCIAL_LINKS } from "@/lib/constants";
 import { useAuth } from "@/lib/auth/AuthContext";
 
-// Vibe 로고 컴포넌트 (일관성 유지를 위해 고정 시킴)
-const VibeLogo = ({ className = "h-8" }: { className?: string }) => (
-  <svg viewBox="0 0 250 50" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="vibe_gradient" x1="0" y1="0" x2="50" y2="50" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#16A34A" /> 
-        <stop offset="1" stopColor="#84CC16" />
-      </linearGradient>
-    </defs>
-    <g transform="translate(0, -3) scale(1.15)">
-      <path 
-        d="M10 5H40C45.5228 5 50 9.47715 50 15V29C50 34.5228 45.5228 39 40 39H30L20 46V39H10C4.47715 39 0 34.5228 0 29V15C0 9.47715 4.47715 5 10 5Z" 
-        fill="url(#vibe_gradient)" 
-      />
-      <path d="M16 16L25 30L34 16" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-    </g>
-    <text x="70" y="35" fontFamily="'Inter', sans-serif" fontWeight="900" fontSize="28" fill="#111827" letterSpacing="-0.5">
-      VIBE<tspan fontWeight="400" dx="0">FOLIO</tspan>
-    </text>
-  </svg>
-);
+import { VibeLogo } from "./Logo";
 
 const menuItems = [
   { label: "발견", path: "/", icon: Home, newest: false },
