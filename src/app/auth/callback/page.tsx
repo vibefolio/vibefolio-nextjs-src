@@ -1,94 +1,48 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 
 /**
- * [Callback Page]
- * 이 페이지는 오직 한 가지만 합니다.
- * Supabase가 URL의 인증 정보를 처리하고 세션을 잡아챌 때까지 "기다리는 것" 입니다.
+ * [Pure Callback Page]
+ * 아무런 커스텀 로직 없이, 오직 Supabase가 인증을 완료하면 홈으로 보내주는 역할만 합니다.
  */
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const processedRef = useRef(false);
 
   useEffect(() => {
-    if (processedRef.current) return;
-    processedRef.current = true;
-
-    console.log("[Callback] Waiting for Supabase to process auth...");
-
-    // 15초 타임아웃 (아무 반응 없을 경우)
-    const timer = setTimeout(() => {
-      if (!error) {
-        console.error("[Callback] Auth Timeout - Redirecting to login");
-        setError("인증 시간이 초과되었습니다.");
-        setTimeout(() => router.push("/login"), 2000);
-      }
-    }, 15000);
-
-    // 가장 확실한 방법: 이벤트 리스너
+    // Supabase가 URL의 해시나 쿼리를 읽어서 세션을 잡도록 시간을 줍니다.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log(`[Callback] Auth Event Received: ${event}`);
-      
-      if (session && (event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
-        console.log("[Callback] Login Successful, saving flags and redirecting...");
-        localStorage.setItem("isLoggedIn", "true");
-        localStorage.setItem("lastActivity", Date.now().toString());
-        
-        clearTimeout(timer);
+      if (event === "SIGNED_IN" && session) {
+        console.log("[Callback] Login confirmed by Supabase Engine");
         router.replace("/");
       }
     });
 
-    // 만약 이미 세션이 잡혀있다면 (매우 빠른 경우)
+    // 만약 이미 세션이 있다면 바로 이동
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        console.log("[Callback] Session already exists, redirecting...");
-        localStorage.setItem("isLoggedIn", "true");
-        localStorage.setItem("lastActivity", Date.now().toString());
-        clearTimeout(timer);
         router.replace("/");
       }
     });
 
+    // 10초 뒤에도 아무 반응이 없으면 로그인 페이지로 돌려보냄 (안전장치)
+    const fallback = setTimeout(() => {
+      router.push("/login");
+    }, 10000);
+
     return () => {
-      clearTimeout(timer);
       subscription.unsubscribe();
+      clearTimeout(fallback);
     };
-  }, [router, error]);
+  }, [router]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-white">
-      <div className="text-center p-12 max-w-sm border border-gray-100 rounded-[40px] shadow-2xl">
-        {!error ? (
-          <div className="flex flex-col items-center gap-8">
-            <div className="relative">
-              <div className="w-16 h-16 border-[5px] border-gray-100 rounded-full"></div>
-              <div className="absolute top-0 w-16 h-16 border-[5px] border-green-500 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-            <div>
-              <h1 className="text-2xl font-black text-gray-900 mb-2">반가워요!</h1>
-              <p className="text-gray-400 text-sm font-medium">안전한 로그인을 위해 세션을 불러오는 중입니다.</p>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-6">
-            <div className="w-16 h-16 bg-red-50 text-red-500 flex items-center justify-center rounded-full text-2xl">!</div>
-            <div>
-              <h1 className="text-xl font-bold text-red-600 mb-2">인증에 실패했습니다</h1>
-              <p className="text-gray-500 text-sm">{error}</p>
-              <button 
-                onClick={() => router.push("/login")}
-                className="mt-6 px-6 py-2 bg-gray-900 text-white rounded-full text-sm font-bold"
-              >
-                다시 로그인하기
-              </button>
-            </div>
-          </div>
-        )}
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-10 h-10 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-sm font-medium text-gray-400">로그인 중입니다...</p>
       </div>
     </div>
   );
