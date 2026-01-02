@@ -143,6 +143,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // 로그아웃 함수
+  const signOut = useCallback(async () => {
+    try {
+      updateAuthState(null, null, null);
+      await supabase.auth.signOut();
+      router.push("/");
+      router.refresh();
+    } catch (error) {
+      console.error("로그아웃 오류:", error);
+      router.push("/");
+    }
+  }, [router, updateAuthState]);
+
+  // 세션 새로고침
+  const refreshSession = useCallback(async () => {
+    try {
+      const { data: { session: newSession }, error } = await supabase.auth.refreshSession();
+      if (error) {
+        if (error.message.includes("refresh_token_not_found") || error.message.includes("invalid")) {
+          await signOut();
+        }
+        return;
+      }
+      if (newSession) {
+        const profile = await loadUserProfile(newSession.user);
+        updateAuthState(newSession, newSession.user, profile);
+      }
+    } catch (error) {
+      console.error("세션 새로고침 오류:", error);
+    }
+  }, [signOut, loadUserProfile, updateAuthState]);
+
+  // 외부에서 호출 가능한 프로필 새로고침 함수
+  const refreshUserProfile = useCallback(async () => {
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser) {
+        const profile = await loadUserProfile(currentUser);
+        setUserProfile(profile);
+        setIsAdmin(profile.role === 'admin');
+      }
+    } catch (e) {
+      console.error("프로필 새로고침 실패:", e);
+    }
+  }, [loadUserProfile]);
+
   // 초기화 로직
   useEffect(() => {
     let isActive = true;
