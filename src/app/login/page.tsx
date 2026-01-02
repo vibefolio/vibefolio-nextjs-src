@@ -137,7 +137,7 @@ export default function LoginPage() {
 
           <div>
              <div className="flex items-center justify-between mb-1">
-              <label htmlFor="password" classNa="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 비밀번호
               </label>
               <Link href="/forgot-password" className="text-xs font-medium text-green-600 hover:text-green-500">
