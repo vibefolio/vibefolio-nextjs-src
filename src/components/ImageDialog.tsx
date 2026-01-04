@@ -84,7 +84,10 @@ const ActionTooltip = ({
 
 export function ImageDialog({ props }: { props: ImageDialogProps }) {
   const { user: currentUser, userProfile } = useAuth();
-  const { isLiked, likeCount, toggle } = useLikes(props.id, props.likes);
+  const { isLiked, toggleLike } = useLikes(props.id, props.likes || 0);
+  
+  // Optimistic like count
+  const displayLikes = (props.likes || 0) + (isLiked ? 1 : 0) - (props.likes && isLiked ? 0 : 0);
   const [isCommentModalOpen, setIsCommentModalOpen] = React.useState(false);
   const [isCollectionModalOpen, setIsCollectionModalOpen] = React.useState(false);
 
@@ -115,7 +118,7 @@ export function ImageDialog({ props }: { props: ImageDialogProps }) {
       }
       return;
     }
-    toggle();
+    toggleLike();
   };
 
   const handleAddComment = (text: string) => {
@@ -162,7 +165,7 @@ export function ImageDialog({ props }: { props: ImageDialogProps }) {
                 className={isLiked ? "fill-red-500 text-red-500" : ""}
               />
             }
-            label="좋아요"
+            label={displayLikes > 0 ? addCommas(displayLikes) : "좋아요"}
             onClick={handleLikeToggle}
           />
           <ActionTooltip
@@ -220,7 +223,7 @@ export function ImageDialog({ props }: { props: ImageDialogProps }) {
                     className={isLiked ? "text-red-500 fill-red-500" : "text-red-400"}
                     fill={isLiked ? "#ef4444" : "#f87171"}
                   />
-                  <p className="text-sm">{addCommas(likeCount)}</p>
+                  <p className="text-sm">{addCommas(displayLikes)}</p>
                 </div>
               </div>
             </div>
