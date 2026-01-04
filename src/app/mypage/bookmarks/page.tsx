@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { Bookmark, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ImageCard } from "@/components/ImageCard";
-import { getBookmarkedProjects, getTotalBookmarksCount } from "@/lib/bookmarks";
+
 
 interface Project {
   id: string;
