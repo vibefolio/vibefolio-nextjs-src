@@ -3,7 +3,7 @@
 "use client"; // 🚨 클라이언트 컴포넌트 지정
 
 import React, { useState } from "react"; // 🚨 useState 추가
-import { Calendar, Grid2X2, Heart, AlignLeft } from "lucide-react";
+import { Calendar, Grid2X2, Heart, AlignLeft, User, Send, Download } from "lucide-react";
 import dayjs from "dayjs";
 import { addCommas } from "@/lib/format/comma";
 
@@ -173,12 +173,12 @@ export function ImageDialog({ props }: { props: ImageDialogProps }) {
                 className={isLiked ? "fill-red-500 text-red-500" : ""}
               />
             }
-            label="좋아요"
+            label={likeCount > 0 ? addCommas(likeCount) : "좋아요"}
             onClick={handleLikeToggle}
           />
-          <ActionTooltip icon={<Heart size={20} />} label="프로필" />
-          <ActionTooltip icon={<Heart size={20} />} label="제안하기" />
-          <ActionTooltip icon={<Heart size={20} />} label="다운로드" />
+          <ActionTooltip icon={<User size={20} />} label="프로필" />
+          <ActionTooltip icon={<Send size={20} />} label="제안하기" />
+          <ActionTooltip icon={<Download size={20} />} label="다운로드" />
         </div>
 
         {/* 🚨 내부 컨텐츠에 패딩 적용 (p-6) */}
