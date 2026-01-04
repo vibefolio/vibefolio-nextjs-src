@@ -3,7 +3,7 @@
 import React from "react";
 // 🚨 상위 components/ui 폴더에서 Skeleton 컴포넌트를 임포트합니다.
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChartNoAxesColumnIncreasing, Heart } from "lucide-react";
+import { BarChart2, Heart } from "lucide-react";
 
 /**
  * ImageCard 컴포넌트의 로딩 상태를 표시하는 스켈레톤 UI입니다.
@@ -21,7 +21,7 @@ export function SkeletonImageCard() {
         <div className="flex items-center gap-3">
           {/* 조회수 스켈레톤 */}
           <div className="flex items-center gap-1">
-            <ChartNoAxesColumnIncreasing
+            <BarChart2
               size={18}
               className="text-neutral-400"
             />

@@ -1,18 +1,18 @@
 "use client";
 
 import { useEditor, EditorContent, BubbleMenu, Editor } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
+import { StarterKit } from '@tiptap/starter-kit';
 import { CustomImageExtension } from './CustomImageExtension';
-import LinkExtension from '@tiptap/extension-link';
-import YoutubeExtension from '@tiptap/extension-youtube';
-import Placeholder from '@tiptap/extension-placeholder';
-import BubbleMenuExtension from '@tiptap/extension-bubble-menu';
-import FloatingMenuExtension from '@tiptap/extension-floating-menu';
-import TextStyle from '@tiptap/extension-text-style';
-import FontFamily from '@tiptap/extension-font-family';
-import TextAlign from '@tiptap/extension-text-align';
-import Underline from '@tiptap/extension-underline';
-import Color from '@tiptap/extension-color';
+import { Link as LinkExtension } from '@tiptap/extension-link';
+import { Youtube as YoutubeExtension } from '@tiptap/extension-youtube';
+import { Placeholder } from '@tiptap/extension-placeholder';
+import { BubbleMenu as BubbleMenuExtension } from '@tiptap/extension-bubble-menu';
+import { FloatingMenu as FloatingMenuExtension } from '@tiptap/extension-floating-menu';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { FontFamily } from '@tiptap/extension-font-family';
+import { TextAlign } from '@tiptap/extension-text-align';
+import { Underline } from '@tiptap/extension-underline';
+import { Color } from '@tiptap/extension-color';
 import { Button } from '@/components/ui/button';
 import {
   Bold,

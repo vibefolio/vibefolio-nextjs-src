@@ -38,7 +38,7 @@ export async function getProjectComments(projectId: string): Promise<Comment[]> 
     return [];
   }
 
-  return data as Comment[];
+  return data as unknown as Comment[];
 }
 
 /**
@@ -73,7 +73,7 @@ export async function addComment(projectId: string, content: string): Promise<Co
     return null;
   }
 
-  return data as Comment;
+  return data as unknown as Comment;
 }
 
 /**

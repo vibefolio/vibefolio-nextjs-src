@@ -3,7 +3,7 @@
 "use client"; // 🚨 클라이언트 컴포넌트 지정
 
 import React, { useState } from "react"; // 🚨 useState 추가
-import { Calendar, Grid2X2, Heart, TextInitial } from "lucide-react";
+import { Calendar, Grid2X2, Heart, AlignLeft } from "lucide-react";
 import dayjs from "dayjs";
 import { addCommas } from "@/lib/format/comma";
 
@@ -168,7 +168,7 @@ export function ImageDialog({ props }: { props: ImageDialogProps }) {
             <div className="flex flex-col gap-2">
               {/* 설명 */}
               <div className="flex items-start gap-2">
-                <TextInitial
+                <AlignLeft
                   size={16}
                   className="min-w-4 mt-1.5 text-neutral-500"
                 />
