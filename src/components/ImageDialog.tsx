@@ -80,7 +80,7 @@ const ActionTooltip = ({
 export function ImageDialog({ props }: { props: ImageDialogProps }) {
   // 🚨 좋아요 상태 관리 추가
   const [isLiked, setIsLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(props.likes);
+  const [likeCount, setLikeCount] = useState(props.likes || 0);
 
   const handleLikeToggle = async () => {
     // 1. 사용자 체크
@@ -173,7 +173,7 @@ export function ImageDialog({ props }: { props: ImageDialogProps }) {
                 className={isLiked ? "fill-red-500 text-red-500" : ""}
               />
             }
-            label={likeCount > 0 ? addCommas(likeCount) : "좋아요"}
+            label="좋아요"
             onClick={handleLikeToggle}
           />
           <ActionTooltip icon={<User size={20} />} label="프로필" />
