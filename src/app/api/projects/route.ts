@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
 
     const { data, error } = await (supabaseAdmin as any)
       .from('Project')
-      .insert([{ user_id, category_id, title, content_text, thumbnail_url, rendering_type, custom_data }] as any)
+      .insert([{ user_id, category_id, title, content_text, thumbnail_url, rendering_type, custom_data, likes_count: 0, views_count: 0 }] as any)
       .select()
       .single();
 

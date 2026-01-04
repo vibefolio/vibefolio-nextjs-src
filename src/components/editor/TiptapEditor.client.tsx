@@ -13,6 +13,8 @@ import { FontFamily } from '@tiptap/extension-font-family';
 import { TextAlign } from '@tiptap/extension-text-align';
 import { Underline } from '@tiptap/extension-underline';
 import { Color } from '@tiptap/extension-color';
+import Dropcursor from '@tiptap/extension-dropcursor';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
   Bold,
@@ -151,11 +153,41 @@ export default function TiptapEditor({
       Color.configure({
         types: ['textStyle'],
       }),
+      Dropcursor.configure({
+        color: '#16A34A',
+        width: 2,
+      }),
     ],
     content,
     editorProps: {
       attributes: {
         class: 'prose prose-lg max-w-none focus:outline-none min-h-[500px] px-8 py-6 editor-blocks',
+      },
+      handleDrop: (view, event, slice, moved) => {
+        if (!moved && event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]) {
+          const file = event.dataTransfer.files[0];
+          if (file.type.startsWith('image/')) {
+            event.preventDefault();
+            const coordinates = view.posAtCoords({ left: event.clientX, top: event.clientY });
+            
+            setUploading(true);
+            uploadImage(file, 'projects')
+              .then((url) => {
+                 if (coordinates) {
+                   view.dispatch(view.state.tr.insert(coordinates.pos, view.state.schema.nodes.image.create({ src: url })));
+                 }
+              })
+              .catch((error) => {
+                console.error('Drop upload failed:', error);
+                toast.error('이미지 업로드에 실패했습니다.');
+              })
+              .finally(() => {
+                setUploading(false);
+              });
+            return true;
+          }
+        }
+        return false;
       },
     },
     onUpdate: ({ editor }) => {
@@ -185,7 +217,7 @@ export default function TiptapEditor({
           editor.commands.updateAttributes('customImage', { src: url });
         } catch (error) {
           console.error('Image replacement failed:', error);
-          alert('이미지 교체에 실패했습니다.');
+          toast.error('이미지 교체에 실패했습니다.');
         } finally {
           setUploading(false);
         }
@@ -209,7 +241,7 @@ export default function TiptapEditor({
         editor.chain().focus().setImage({ src: url }).run();
       } catch (error) {
         console.error('Image upload failed:', error);
-        alert('이미지 업로드에 실패했습니다.');
+        toast.error('이미지 업로드에 실패했습니다.');
       } finally {
         setUploading(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
