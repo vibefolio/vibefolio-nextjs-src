@@ -1,29 +1,13 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   // 이미지 최적화 설정
   images: {
-    remotePatterns: (() => {
-      const patterns: any[] = [
-        { protocol: 'https', hostname: 'images.unsplash.com' },
-        { protocol: 'https', hostname: 'vibefolio.com' },
-        { protocol: 'https', hostname: 'localhost' },
-      ];
-      try {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        if (supabaseUrl) {
-          const host = new URL(supabaseUrl).hostname;
-          patterns.push({ protocol: 'https', hostname: host });
-        } else if (process.env.NEXT_PUBLIC_SUPABASE_HOST) {
-          patterns.push({ protocol: 'https', hostname: process.env.NEXT_PUBLIC_SUPABASE_HOST });
-        } else {
-          patterns.push({ protocol: 'https', hostname: '*.supabase.co' });
-        }
-      } catch (e) {
-        patterns.push({ protocol: 'https', hostname: '*.supabase.co' });
-      }
-      return patterns;
-    })(),
+    remotePatterns: [
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: 'vibefolio.com' },
+      { protocol: 'https', hostname: 'localhost' },
+      { protocol: 'https', hostname: '*.supabase.co' }
+    ],
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 60 * 60 * 24 * 7, // 7일 캐시
   },
@@ -32,9 +16,6 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react', '@fortawesome/react-fontawesome', 'dayjs'],
   },
-  
-  // Turbopack 설정 (Next.js 16 기본값)
-  turbopack: {},
   
   // 헤더 설정 (캐싱)
   async headers() {
