@@ -314,8 +314,7 @@ export function Header({
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuContent className="w-56 z-[100]" align="end" sideOffset={5} avoidCollisions={true} collisionPadding={10}>
+              <DropdownMenuContent className="w-56 z-[100] bg-white border shadow-md" align="end" sideOffset={8}>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{userProfile?.username}</p>
@@ -334,11 +333,10 @@ export function Header({
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-700">
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-700 cursor-pointer">
                   로그아웃
                 </DropdownMenuItem>
               </DropdownMenuContent>
-            </DropdownMenuPortal>
             </DropdownMenu>
           ) : (
             <div className="flex items-center gap-2">
