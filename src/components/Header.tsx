@@ -190,7 +190,7 @@ export function Header() {
             <Input
               placeholder="프로젝트 검색"
               onKeyDown={handleSearchKeyDown}
-              className="border-none bg-transparent focus-visible:ring-0 text-sm p-0 h-auto ml-2 placeholder:text-gray-400 w-full text-gray-700 font-medium"
+              className="border-none !bg-transparent !shadow-none !ring-0 focus-visible:!ring-0 text-sm p-0 h-auto ml-2 placeholder:text-gray-400 w-full text-gray-700 font-medium"
             />
           </div>
           
