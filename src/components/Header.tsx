@@ -21,6 +21,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuPortal,
   Avatar,
   AvatarFallback,
   AvatarImage,
@@ -313,7 +314,8 @@ export function Header({
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 z-[100]" align="end" sideOffset={5} collisionPadding={10}>
+            <DropdownMenuPortal>
+              <DropdownMenuContent className="w-56 z-[100]" align="end" sideOffset={5} avoidCollisions={true} collisionPadding={10}>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{userProfile?.username}</p>
@@ -332,10 +334,11 @@ export function Header({
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-700">
                   로그아웃
                 </DropdownMenuItem>
               </DropdownMenuContent>
+            </DropdownMenuPortal>
             </DropdownMenu>
           ) : (
             <div className="flex items-center gap-2">
